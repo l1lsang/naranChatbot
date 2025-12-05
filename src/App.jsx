@@ -2,7 +2,19 @@ import { useEffect, useState, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
+import { auth } from "./firebase";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+
+import Login from "./Login";
+import Signup from "./Signup";
+
 export default function App() {
+  /* ---------------- 로그인 상태 ---------------- */
+  const [user, setUser] = useState(null);
+  const [loadingUser, setLoadingUser] = useState(true);
+  const [page, setPage] = useState("login"); // login | signup
+
+  /* ---------------- 챗봇 상태 ---------------- */
   const [darkMode, setDarkMode] = useState(false);
   const [conversations, setConversations] = useState([
     {
@@ -25,10 +37,36 @@ export default function App() {
   const [error, setError] = useState("");
 
   const chatRef = useRef(null);
-
   const currentConv = conversations.find((c) => c.id === currentId);
 
-  /* ---------------- 다크모드 ---------------- */
+  /* ---------------- Firebase 로그인 감시 ---------------- */
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (current) => {
+      setUser(current);
+      setLoadingUser(false);
+    });
+
+    return () => unsub();
+  }, []);
+
+  if (loadingUser) {
+    return (
+      <div className="w-screen h-screen flex items-center justify-center dark:text-white">
+        로딩중...
+      </div>
+    );
+  }
+
+  // 로그인 안 했으면 Login 또는 Signup 페이지
+  if (!user) {
+    return page === "login" ? (
+      <Login goSignup={() => setPage("signup")} />
+    ) : (
+      <Signup goLogin={() => setPage("login")} />
+    );
+  }
+
+  /* ---------------- 다크모드 초기 로드 ---------------- */
   useEffect(() => {
     const saved = localStorage.getItem("theme");
     if (saved === "dark") {
@@ -87,7 +125,7 @@ export default function App() {
       content: m.text,
     }));
 
-  /* ---------------- 제목 생성 ---------------- */
+  /* ---------------- 제목 자동 생성 ---------------- */
   const generateTitle = async (conversationId) => {
     try {
       const conv = conversations.find((c) => c.id === conversationId);
@@ -109,9 +147,7 @@ export default function App() {
 
       if (!res.ok) return;
       const data = await res.json();
-      if (!data.title) return;
-
-      updateTitle(conversationId, data.title.trim());
+      if (data.title) updateTitle(conversationId, data.title.trim());
     } catch (err) {
       console.error("제목 생성 오류:", err);
     }
@@ -148,7 +184,6 @@ export default function App() {
       text,
     };
 
-    // 사용자 메시지 저장
     setConversations((prev) =>
       prev.map((c) =>
         c.id === activeId ? { ...c, messages: [...c.messages, userMsg] } : c
@@ -163,12 +198,10 @@ export default function App() {
 
       const messagesForApi = buildMessagesForApi(tempConv);
 
-      // GPT 호출
       const reply = await requestGpt(activeId, tempConv.category, messagesForApi);
 
       const botMsg = { id: Date.now() + 1, sender: "bot", text: reply };
 
-      // GPT 응답 추가
       setConversations((prev) =>
         prev.map((c) =>
           c.id === activeId ? { ...c, messages: [...c.messages, botMsg] } : c
@@ -201,6 +234,15 @@ export default function App() {
       {/* 사이드바 */}
       <aside className="w-64 bg-white dark:bg-[#1a1a1a] border-r dark:border-neutral-700 p-4 flex flex-col">
         
+        {/* 로그아웃 버튼 */}
+        <button
+          onClick={() => signOut(auth)}
+          className="mb-4 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600"
+        >
+          로그아웃
+        </button>
+
+        {/* 다크모드 */}
         <button
           onClick={() => setDarkMode(!darkMode)}
           className="mb-4 bg-indigo-600 dark:bg-neutral-700 text-white px-4 py-2 rounded-lg"
@@ -208,6 +250,7 @@ export default function App() {
           {darkMode ? "🌞 라이트 모드" : "🌙 다크 모드"}
         </button>
 
+        {/* 새 상담 */}
         <button
           onClick={addConversation}
           className="mb-4 bg-indigo-600 dark:bg-neutral-700 text-white px-4 py-2 rounded-lg"
@@ -215,6 +258,7 @@ export default function App() {
           + 새 상담
         </button>
 
+        {/* 상담 목록 */}
         <div className="flex-1 overflow-y-auto scrollbar-hide space-y-2">
           {conversations.map((conv) => (
             <div
@@ -229,6 +273,7 @@ export default function App() {
               <div className="font-semibold text-sm truncate">
                 {conv.title}
               </div>
+
               {conv.category && (
                 <div className="text-xs opacity-70">유형: {conv.category}</div>
               )}
@@ -237,12 +282,15 @@ export default function App() {
         </div>
       </aside>
 
-      {/* 메인 */}
+      {/* 메인 영역 */}
       <main className="flex-1 flex flex-col bg-white dark:bg-black">
+        
+        {/* 헤더 */}
         <header className="p-4 border-b bg-white dark:bg-[#1a1a1a]">
           <h1 className="text-xl font-semibold dark:text-white">상담 챗봇</h1>
         </header>
 
+        {/* 메시지 영역 */}
         <div
           ref={chatRef}
           className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50 dark:bg-black"
@@ -257,7 +305,6 @@ export default function App() {
                     : "bg-white dark:bg-neutral-800 dark:text-gray-200 rounded-bl-none"
                 }`}
               >
-                {/* 유저: 일반 텍스트, GPT: 마크다운 */}
                 {msg.sender === "user" ? (
                   <p className="whitespace-pre-line">{msg.text}</p>
                 ) : (
@@ -280,6 +327,7 @@ export default function App() {
             </div>
           )}
 
+          {/* 사건 유형 빠른 선택 */}
           <div className="flex gap-2 mt-6">
             {["민사", "형사", "가사", "노동", "기타"].map((cat) => (
               <button
@@ -293,7 +341,7 @@ export default function App() {
           </div>
         </div>
 
-        {/* 입력 */}
+        {/* 입력창 */}
         <div className="p-4 border-t bg-white dark:bg-neutral-900 flex gap-2">
           <input
             type="text"
@@ -310,8 +358,8 @@ export default function App() {
             전송
           </button>
         </div>
-      </main>
 
+      </main>
     </div>
   );
 }
