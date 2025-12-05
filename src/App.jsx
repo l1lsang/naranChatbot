@@ -1,54 +1,30 @@
-import { useEffect, useState, useRef } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-
+import { useEffect, useState } from "react";
 import { auth } from "./firebase";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 
 import Login from "./Login";
 import Signup from "./Signup";
+import ChatPage from "./ChatPage";   // 🔥 챗봇 UI는 별도 컴포넌트로 분리
 
 export default function App() {
-  /* ---------------- 로그인 상태 ---------------- */
   const [user, setUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [page, setPage] = useState("login"); // login | signup
 
-  /* ---------------- 챗봇 상태 ---------------- */
-  const [darkMode, setDarkMode] = useState(false);
-  const [conversations, setConversations] = useState([
-    {
-      id: 1,
-      title: "오늘 상담",
-      category: null,
-      messages: [
-        {
-          id: 1,
-          sender: "bot",
-          text: "안녕하세요! 😊 **법무법인 나란 챗봇**입니다.\n무엇을 도와드릴까요?",
-        },
-      ],
-    },
-  ]);
-
-  const [currentId, setCurrentId] = useState(1);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const chatRef = useRef(null);
-  const currentConv = conversations.find((c) => c.id === currentId);
-
-  /* ---------------- Firebase 로그인 감시 ---------------- */
+  // 🔥 Firebase 로그인 상태 감시 (App에서 언제나 동일한 위치)
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (current) => {
       setUser(current);
       setLoadingUser(false);
     });
-
     return () => unsub();
   }, []);
 
+  /* --------------------------------------------------
+      아래부터 조건부 렌더링 (Hook 실행 순서와 무관)
+  -------------------------------------------------- */
+
+  // 1) 로그인 상태 확인 중
   if (loadingUser) {
     return (
       <div className="w-screen h-screen flex items-center justify-center dark:text-white">
@@ -57,7 +33,7 @@ export default function App() {
     );
   }
 
-  // 로그인 안 했으면 Login 또는 Signup 페이지
+  // 2) 로그인 안 되어 있음 → Login / Signup만 보여주기
   if (!user) {
     return page === "login" ? (
       <Login goSignup={() => setPage("signup")} />
@@ -65,6 +41,10 @@ export default function App() {
       <Signup goLogin={() => setPage("login")} />
     );
   }
+
+  // 3) 로그인됨 → 챗봇 메인 페이지 렌더 (ChatPage.jsx)
+  return <ChatPage user={user} />;
+
 
   /* ---------------- 다크모드 초기 로드 ---------------- */
   useEffect(() => {
