@@ -4,36 +4,37 @@ import { onAuthStateChanged } from "firebase/auth";
 
 import Login from "./Login";
 import Signup from "./Signup";
-import ChatPage from "./ChatPage";   // 🔥 챗봇 UI는 별도 컴포넌트로 분리
+import ChatPage from "./ChatPage"; // 🔥 챗봇 UI 분리한 컴포넌트
 
 export default function App() {
   const [user, setUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [page, setPage] = useState("login"); // login | signup
 
-  // 🔥 Firebase 로그인 상태 감시 (App에서 언제나 동일한 위치)
+  // 🔥 Firebase 로그인 감시 — App의 가장 첫 useEffect여야 안전함
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (current) => {
-      setUser(current);
+    const unsub = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
       setLoadingUser(false);
     });
     return () => unsub();
   }, []);
 
   /* --------------------------------------------------
-      아래부터 조건부 렌더링 (Hook 실행 순서와 무관)
+      조건부 렌더링은 Hook 아래에만 있어야 해서
+      아래 구조는 절대 문제가 없음
   -------------------------------------------------- */
 
-  // 1) 로그인 상태 확인 중
+  // 1) Firebase가 로그인 상태 확인 중
   if (loadingUser) {
     return (
-      <div className="w-screen h-screen flex items-center justify-center dark:text-white">
-        로딩중...
+      <div className="w-screen h-screen flex items-center justify-center text-lg dark:text-white">
+        🔄 로그인 상태 확인 중…
       </div>
     );
   }
 
-  // 2) 로그인 안 되어 있음 → Login / Signup만 보여주기
+  // 2) 로그인 안 된 상태 → Login / Signup 화면만 렌더
   if (!user) {
     return page === "login" ? (
       <Login goSignup={() => setPage("signup")} />
@@ -42,304 +43,6 @@ export default function App() {
     );
   }
 
-  // 3) 로그인됨 → 챗봇 메인 페이지 렌더 (ChatPage.jsx)
+  // 3) 로그인됨 → 챗봇 메인 페이지 렌더
   return <ChatPage user={user} />;
-
-
-  /* ---------------- 다크모드 초기 로드 ---------------- */
-  useEffect(() => {
-    const saved = localStorage.getItem("theme");
-    if (saved === "dark") {
-      setDarkMode(true);
-      document.documentElement.classList.add("dark");
-    }
-  }, []);
-
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
-  }, [darkMode]);
-
-  /* ---------------- 자동 스크롤 ---------------- */
-  useEffect(() => {
-    if (chatRef.current) {
-      chatRef.current.scrollTop = chatRef.current.scrollHeight;
-    }
-  }, [currentConv?.messages, loading]);
-
-  /* ---------------- 새 상담 ---------------- */
-  const addConversation = () => {
-    const newId = Date.now();
-    const newConv = {
-      id: newId,
-      title: "새 상담",
-      category: null,
-      messages: [
-        {
-          id: Date.now(),
-          sender: "bot",
-          text: "새 상담을 시작합니다.\n어떤 사건인지 선택해주세요!",
-        },
-      ],
-    };
-    setConversations((prev) => [...prev, newConv]);
-    setCurrentId(newId);
-    setError("");
-  };
-
-  /* ---------------- 제목 업데이트 ---------------- */
-  const updateTitle = (id, title) => {
-    setConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, title } : c))
-    );
-  };
-
-  const buildMessagesForApi = (conv) =>
-    conv.messages.map((m) => ({
-      role: m.sender === "user" ? "user" : "assistant",
-      content: m.text,
-    }));
-
-  /* ---------------- 제목 자동 생성 ---------------- */
-  const generateTitle = async (conversationId) => {
-    try {
-      const conv = conversations.find((c) => c.id === conversationId);
-      if (!conv) return;
-
-      if (!["새 상담", "오늘 상담"].includes(conv.title)) return;
-      if (conv.messages.length < 3) return;
-
-      const messagesForApi = buildMessagesForApi(conv);
-
-      const res = await fetch("/api/title", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: messagesForApi,
-          category: conv.category,
-        }),
-      });
-
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data.title) updateTitle(conversationId, data.title.trim());
-    } catch (err) {
-      console.error("제목 생성 오류:", err);
-    }
-  };
-
-  /* ---------------- GPT API ---------------- */
-  const requestGpt = async (conversationId, category, messagesForApi) => {
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      body: JSON.stringify({
-        messages: messagesForApi,
-        category: category || null,
-      }),
-    });
-
-    if (!res.ok) throw new Error("서버와 통신 중 오류가 발생했습니다.");
-
-    const data = await res.json();
-    if (!data.reply) throw new Error("GPT 응답 없음");
-
-    return data.reply;
-  };
-
-  /* ---------------- 메시지 전송 ---------------- */
-  const sendMessage = async (text) => {
-    if (!text.trim() || !currentConv || loading) return;
-
-    setError("");
-
-    const activeId = currentId;
-    const userMsg = {
-      id: Date.now(),
-      sender: "user",
-      text,
-    };
-
-    setConversations((prev) =>
-      prev.map((c) =>
-        c.id === activeId ? { ...c, messages: [...c.messages, userMsg] } : c
-      )
-    );
-    setInput("");
-
-    setLoading(true);
-    try {
-      const conv = conversations.find((c) => c.id === activeId);
-      const tempConv = { ...conv, messages: [...conv.messages, userMsg] };
-
-      const messagesForApi = buildMessagesForApi(tempConv);
-
-      const reply = await requestGpt(activeId, tempConv.category, messagesForApi);
-
-      const botMsg = { id: Date.now() + 1, sender: "bot", text: reply };
-
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === activeId ? { ...c, messages: [...c.messages, botMsg] } : c
-        )
-      );
-
-      generateTitle(activeId);
-    } catch (err) {
-      setError(err.message || "알 수 없는 오류");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /* ---------------- 사건 유형 선택 ---------------- */
-  const chooseCategory = (cat) => {
-    const id = currentId;
-
-    setConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, category: cat } : c))
-    );
-
-    sendMessage(`사건 유형: ${cat}`);
-  };
-
-  /* ---------------- UI 렌더 ---------------- */
-  return (
-    <div className="w-screen h-screen flex overflow-hidden bg-gray-100 dark:bg-[#0f0f0f]">
-
-      {/* 사이드바 */}
-      <aside className="w-64 bg-white dark:bg-[#1a1a1a] border-r dark:border-neutral-700 p-4 flex flex-col">
-        
-        {/* 로그아웃 버튼 */}
-        <button
-          onClick={() => signOut(auth)}
-          className="mb-4 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600"
-        >
-          로그아웃
-        </button>
-
-        {/* 다크모드 */}
-        <button
-          onClick={() => setDarkMode(!darkMode)}
-          className="mb-4 bg-indigo-600 dark:bg-neutral-700 text-white px-4 py-2 rounded-lg"
-        >
-          {darkMode ? "🌞 라이트 모드" : "🌙 다크 모드"}
-        </button>
-
-        {/* 새 상담 */}
-        <button
-          onClick={addConversation}
-          className="mb-4 bg-indigo-600 dark:bg-neutral-700 text-white px-4 py-2 rounded-lg"
-        >
-          + 새 상담
-        </button>
-
-        {/* 상담 목록 */}
-        <div className="flex-1 overflow-y-auto scrollbar-hide space-y-2">
-          {conversations.map((conv) => (
-            <div
-              key={conv.id}
-              onClick={() => setCurrentId(conv.id)}
-              className={`p-3 rounded-lg cursor-pointer ${
-                currentId === conv.id
-                  ? "bg-indigo-100 dark:bg-neutral-700 text-indigo-700 dark:text-white"
-                  : "bg-gray-100 dark:bg-neutral-800 dark:text-gray-300"
-              }`}
-            >
-              <div className="font-semibold text-sm truncate">
-                {conv.title}
-              </div>
-
-              {conv.category && (
-                <div className="text-xs opacity-70">유형: {conv.category}</div>
-              )}
-            </div>
-          ))}
-        </div>
-      </aside>
-
-      {/* 메인 영역 */}
-      <main className="flex-1 flex flex-col bg-white dark:bg-black">
-        
-        {/* 헤더 */}
-        <header className="p-4 border-b bg-white dark:bg-[#1a1a1a]">
-          <h1 className="text-xl font-semibold dark:text-white">상담 챗봇</h1>
-        </header>
-
-        {/* 메시지 영역 */}
-        <div
-          ref={chatRef}
-          className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50 dark:bg-black"
-        >
-          {currentConv?.messages.map((msg) => (
-            <div key={msg.id} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
-              
-              <div
-                className={`max-w-[70%] px-4 py-3 rounded-2xl shadow transition ${
-                  msg.sender === "user"
-                    ? "bg-indigo-500 text-white rounded-br-none"
-                    : "bg-white dark:bg-neutral-800 dark:text-gray-200 rounded-bl-none"
-                }`}
-              >
-                {msg.sender === "user" ? (
-                  <p className="whitespace-pre-line">{msg.text}</p>
-                ) : (
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    className="chat-markdown"
-                  >
-                    {msg.text}
-                  </ReactMarkdown>
-                )}
-              </div>
-            </div>
-          ))}
-
-          {loading && (
-            <div className="flex justify-start">
-              <div className="max-w-[60%] px-4 py-3 bg-white dark:bg-neutral-800 rounded-2xl shadow text-sm">
-                챗봇이 입력 중입니다…
-              </div>
-            </div>
-          )}
-
-          {/* 사건 유형 빠른 선택 */}
-          <div className="flex gap-2 mt-6">
-            {["민사", "형사", "가사", "노동", "기타"].map((cat) => (
-              <button
-                key={cat}
-                onClick={() => chooseCategory(cat)}
-                className="px-4 py-2 border rounded-full bg-white dark:bg-neutral-800 dark:text-gray-200"
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 입력창 */}
-        <div className="p-4 border-t bg-white dark:bg-neutral-900 flex gap-2">
-          <input
-            type="text"
-            className="flex-1 border dark:border-neutral-600 px-4 py-2 rounded-xl bg-white dark:bg-neutral-800 dark:text-white"
-            placeholder="메시지를 입력하세요…"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && sendMessage(input)}
-          />
-          <button
-            onClick={() => sendMessage(input)}
-            className="px-5 py-2 rounded-xl bg-indigo-600 dark:bg-neutral-700 text-white"
-          >
-            전송
-          </button>
-        </div>
-
-      </main>
-    </div>
-  );
 }
