@@ -4,7 +4,7 @@ export const config = {
   runtime: "edge",
 };
 
-const FIXED_TEMPLATE = `
+const FIXED_TEMPLATE = `\
 ✅키워드:
 ✅사기내용:
 ✅구성선택:
