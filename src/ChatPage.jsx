@@ -243,7 +243,21 @@ export default function ChatPage({ user }) {
       const el = textareaRef.current;
       if (el) el.style.height = "auto";
     }
+    try {
+  await setDoc(
+    doc(db, "users", uid, "conversations", convId, "messages", msgId),
+    {
+      sender,
+      text,
+      createdAt: serverTimestamp(),
+    }
+  );
+} catch (err) {
+  console.error("🔥 Firestore save error:", err);
+}
+
   };
+  
 
   /* ---------------- Select Tone ---------------- */
   const selectTone = async (toneName) => {
