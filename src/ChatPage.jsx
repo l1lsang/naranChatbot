@@ -355,22 +355,33 @@ export default function ChatPage({ user }) {
           {/* 입력창 */}
           <div className="p-4 border-t dark:border-neutral-700 bg-white dark:bg-neutral-900 flex gap-2">
             <input
-              type="text"
-              disabled={!currentConv.tone}
-              className={`flex-1 border px-4 py-2 rounded-xl dark:border-neutral-600 ${
-                currentConv.tone
-                  ? "bg-white dark:bg-neutral-800 dark:text-white"
-                  : "bg-gray-300 dark:bg-neutral-700 cursor-not-allowed"
-              }`}
-              placeholder={
-                currentConv.tone
-                  ? "메시지를 입력하세요…"
-                  : "먼저 블로그 톤을 선택해주세요"
-              }
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && sendMessage(input)}
-            />
+  type="text"
+  disabled={!currentConv.tone}
+  className={`flex-1 border px-4 py-2 rounded-xl dark:border-neutral-600 ${
+    currentConv.tone
+      ? "bg-white dark:bg-neutral-800 dark:text-white"
+      : "bg-gray-300 dark:bg-neutral-700 cursor-not-allowed"
+  }`}
+  placeholder={
+    currentConv.tone
+      ? "Shift + Enter = 줄바꿈 / Enter = 전송"
+      : "먼저 블로그 톤을 선택해주세요"
+  }
+  value={input}
+  onChange={(e) => setInput(e.target.value)}
+  onKeyDown={(e) => {
+    if (e.key === "Enter") {
+      if (e.shiftKey) {
+        e.preventDefault();
+        setInput((prev) => prev + "\n");
+      } else {
+        e.preventDefault();
+        sendMessage(input);
+      }
+    }
+  }}
+/>
+
 
             <button
               onClick={() => sendMessage(input)}

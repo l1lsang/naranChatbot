@@ -4,9 +4,10 @@ export const config = {
   runtime: "edge",
 };
 
-const FIXED_TEMPLATE = `✅키워드:
+const FIXED_TEMPLATE = `
+✅키워드:
 ✅사기내용:
-✅구성선택
+✅구성선택:
 
 1.사기 개연성을 중심으로 한 글  
 2.주의해야할 위험요소에 대해 디테일하게 분석한 글  
