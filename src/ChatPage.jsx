@@ -15,7 +15,6 @@ import {
 } from "firebase/firestore";
 
 export default function ChatPage({ user }) {
-  /* ---------------- Refs ---------------- */
   const textareaRef = useRef(null);
   const chatRef = useRef(null);
 
@@ -30,7 +29,7 @@ export default function ChatPage({ user }) {
 
   const currentConv = conversations.find((c) => c.id === currentId);
 
-  /* ---------------- Firestore Load Conversations ---------------- */
+  /* ---------------- Load Conversations ---------------- */
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -50,9 +49,11 @@ export default function ChatPage({ user }) {
 
         const messages = msgSnap.docs
           .map((m) => ({ id: m.id, ...m.data() }))
-          .sort(
-            (a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0)
-          );
+          .sort((a, b) => {
+            const at = a.createdAt?.seconds || a.clientTime || 0;
+            const bt = b.createdAt?.seconds || b.clientTime || 0;
+            return at - bt;
+          });
 
         list.push({
           id: convId,
@@ -73,7 +74,7 @@ export default function ChatPage({ user }) {
     return () => unsubscribe();
   }, [user]);
 
-  /* ---------------- Auto Select Conversation + Tone Modal ---------------- */
+  /* ---------------- Auto Select Conversation ---------------- */
   useEffect(() => {
     if (conversations.length === 0) {
       setCurrentId(null);
@@ -89,9 +90,7 @@ export default function ChatPage({ user }) {
     }
 
     const conv = conversations.find((c) => c.id === currentId);
-    if (!conv) return;
-
-    setToneModal(!conv.tone);
+    if (conv) setToneModal(!conv.tone);
   }, [conversations, currentId]);
 
   /* ---------------- Auto Scroll ---------------- */
@@ -120,7 +119,7 @@ export default function ChatPage({ user }) {
     }
   }, [darkMode]);
 
-  /* ---------------- Create New Conversation (with FIRST BOT MESSAGE) ---------------- */
+  /* ---------------- Create New Conversation ---------------- */
   const addConversation = async () => {
     const uid = user.uid;
     const newId = Date.now().toString();
@@ -131,13 +130,15 @@ export default function ChatPage({ user }) {
       createdAt: serverTimestamp(),
     });
 
-    // ⭐ 첫 메시지 Firestore에 즉시 추가
+    const firstMsgId = (Date.now() + 1).toString();
+
     await setDoc(
-      doc(db, "users", uid, "conversations", newId, "messages", Date.now().toString()),
+      doc(db, "users", uid, "conversations", newId, "messages", firstMsgId),
       {
         sender: "bot",
         text: "새로운 상담을 시작합니다. 먼저 블로그 작성 톤을 선택해주세요! ✍️",
         createdAt: serverTimestamp(),
+        clientTime: Date.now() / 1000,
       }
     );
 
@@ -145,7 +146,7 @@ export default function ChatPage({ user }) {
     setToneModal(true);
   };
 
-  /* ---------------- Save Message to Firestore ---------------- */
+  /* ---------------- Save Message ---------------- */
   const saveMessage = async (convId, sender, text) => {
     const uid = user.uid;
     const msgId = Date.now().toString();
@@ -156,18 +157,18 @@ export default function ChatPage({ user }) {
         sender,
         text,
         createdAt: serverTimestamp(),
+        clientTime: Date.now() / 1000,
       }
     );
   };
 
-  /* ---------------- GPT Build Messages ---------------- */
+  /* ---------------- GPT API ---------------- */
   const buildMessagesForApi = (conv) =>
     conv.messages.map((m) => ({
       role: m.sender === "user" ? "user" : "assistant",
       content: m.text,
     }));
 
-  /* ---------------- GPT Routing ---------------- */
   const requestGpt = async (convId, messagesForApi) => {
     const last = messagesForApi[messagesForApi.length - 1]?.content?.trim();
     const tone = currentConv?.tone;
@@ -190,10 +191,7 @@ export default function ChatPage({ user }) {
       const res = await fetch("/api/law/blog", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: messagesForApi,
-          tone,
-        }),
+        body: JSON.stringify({ messages: messagesForApi, tone }),
       });
       const data = await res.json();
       return data.reply;
@@ -215,7 +213,28 @@ export default function ChatPage({ user }) {
 
     const convId = currentId;
 
+    // 1) Firestore 저장
     await saveMessage(convId, "user", text);
+
+    // 2) 즉시 화면 반영 (임시 메시지)
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === convId
+          ? {
+              ...c,
+              messages: [
+                ...c.messages,
+                {
+                  id: "temp-" + Date.now(),
+                  sender: "user",
+                  text,
+                  createdAt: { seconds: Date.now() / 1000 },
+                },
+              ],
+            }
+          : c
+      )
+    );
 
     setLoading(true);
 
@@ -228,7 +247,28 @@ export default function ChatPage({ user }) {
 
       const reply = await requestGpt(convId, buildMessagesForApi(tempConv));
 
+      // 3) Firestore 저장 (bot)
       await saveMessage(convId, "bot", reply);
+
+      // 4) 즉시 화면 표시
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === convId
+            ? {
+                ...c,
+                messages: [
+                  ...c.messages,
+                  {
+                    id: "temp-bot-" + Date.now(),
+                    sender: "bot",
+                    text: reply,
+                    createdAt: { seconds: Date.now() / 1000 },
+                  },
+                ],
+              }
+            : c
+        )
+      );
     } finally {
       setLoading(false);
       setInput("");
@@ -238,7 +278,7 @@ export default function ChatPage({ user }) {
     }
   };
 
-  /* ---------------- Select Tone ---------------- */
+  /* ---------------- Tone Select ---------------- */
   const selectTone = async (toneName) => {
     const uid = user.uid;
 
@@ -246,7 +286,7 @@ export default function ChatPage({ user }) {
       tone: toneName,
     });
 
-    setTimeout(() => setToneModal(false), 50);
+    setTimeout(() => setToneModal(false), 30);
 
     await saveMessage(
       currentId,
@@ -255,21 +295,20 @@ export default function ChatPage({ user }) {
     );
   };
 
-  /* ---------------- Tone Options ---------------- */
+  /* ---------------- Tone Buttons ---------------- */
   const toneOptions = [
     { name: "전문가 시점(법률 분석)", desc: "법률·판례 기반의 전문 분석." },
     { name: "경고형 톤", desc: "위험과 주의 메시지를 강조." },
     { name: "친절한 설명형", desc: "초보도 쉽게 이해할 수 있는 말투." },
-    { name: "뉴스 기사형", desc: "객관적 보도 스타일로 작성." },
-    { name: "단호한 대응형", desc: "명확한 해결 제시와 강한 어조." },
-    { name: "부드러운 위로형", desc: "상담자의 감정을 공감하며 설명." },
+    { name: "뉴스 기사형", desc: "객관적 보도 스타일." },
+    { name: "단호한 대응형", desc: "명확하고 강한 어조." },
+    { name: "부드러운 위로형", desc: "감정 공감 & 위로 중심." },
   ];
 
   /* ---------------- UI ---------------- */
   return (
     <div className="w-screen h-screen flex overflow-hidden relative">
 
-      {/* ---------------- Tone Modal ---------------- */}
       {toneModal && currentConv && (
         <div className="absolute inset-0 backdrop-blur-sm bg-black/20 z-20"></div>
       )}
@@ -297,13 +336,13 @@ export default function ChatPage({ user }) {
         </div>
       )}
 
-      {/* ---------------- Main UI ---------------- */}
+      {/* ---------------- Main ---------------- */}
       <div
         className={`flex flex-1 ${
           toneModal && currentConv ? "pointer-events-none blur-sm" : ""
         }`}
       >
-        {/* ---------------- Sidebar ---------------- */}
+        {/* Sidebar */}
         <aside className="w-64 bg-white dark:bg-neutral-900 border-r dark:border-neutral-700 p-4 flex flex-col">
           <button
             onClick={() => signOut(auth)}
@@ -349,16 +388,15 @@ export default function ChatPage({ user }) {
           </div>
         </aside>
 
-        {/* ---------------- Chat Area ---------------- */}
+        {/* Chat Area */}
         {conversations.length === 0 ? (
           <main className="flex-1 flex flex-col items-center justify-center bg-gray-50 dark:bg-black text-center px-4">
             <h2 className="text-2xl font-semibold dark:text-white mb-3">
               아직 상담이 없습니다
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              좌측 상단의 <strong>“+ 새 상담”</strong>을 눌러
-              <br />
-              새로운 상담을 시작해 주세요.
+              좌측 상단의 <strong>“+ 새 상담”</strong>을 눌러<br />
+              상담을 시작하세요.
             </p>
           </main>
         ) : (
@@ -370,7 +408,7 @@ export default function ChatPage({ user }) {
               </p>
             </header>
 
-            {/* ---------------- Messages ---------------- */}
+            {/* Message List */}
             <div ref={chatRef} className="flex-1 overflow-y-auto p-6 space-y-4">
               {(currentConv?.messages ?? []).map((msg) => (
                 <div
@@ -402,7 +440,7 @@ export default function ChatPage({ user }) {
               )}
             </div>
 
-            {/* ---------------- Input ---------------- */}
+            {/* Input */}
             <div className="p-4 border-t dark:border-neutral-700 bg-white dark:bg-neutral-900 flex gap-2">
               <textarea
                 ref={textareaRef}
@@ -431,6 +469,7 @@ export default function ChatPage({ user }) {
                     if (e.shiftKey) return;
                     e.preventDefault();
                     sendMessage(input);
+
                     const el = textareaRef.current;
                     if (el) el.style.height = "auto";
                   }
