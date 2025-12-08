@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { signOut } from "firebase/auth";
 import { auth } from "./firebase";
+const textareaRef = useRef(null);
 
 export default function ChatPage({ user }) {
   /* ---------------- 상태 ---------------- */
@@ -354,10 +355,10 @@ export default function ChatPage({ user }) {
 
           {/* 입력창 */}
           <div className="p-4 border-t dark:border-neutral-700 bg-white dark:bg-neutral-900 flex gap-2">
-            <input
-  type="text"
+            <textarea
+  ref={textareaRef}
   disabled={!currentConv.tone}
-  className={`flex-1 border px-4 py-2 rounded-xl dark:border-neutral-600 ${
+  className={`flex-1 border px-4 py-2 rounded-xl resize-none overflow-hidden leading-relaxed dark:border-neutral-600 ${
     currentConv.tone
       ? "bg-white dark:bg-neutral-800 dark:text-white"
       : "bg-gray-300 dark:bg-neutral-700 cursor-not-allowed"
@@ -368,19 +369,34 @@ export default function ChatPage({ user }) {
       : "먼저 블로그 톤을 선택해주세요"
   }
   value={input}
-  onChange={(e) => setInput(e.target.value)}
+  onChange={(e) => {
+    setInput(e.target.value);
+
+    // ⭐ textarea 자동 높이 조절
+    const el = textareaRef.current;
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = el.scrollHeight + "px";
+    }
+  }}
   onKeyDown={(e) => {
     if (e.key === "Enter") {
       if (e.shiftKey) {
-        e.preventDefault();
-        setInput((prev) => prev + "\n");
+        // 줄바꿈
+        return;
       } else {
+        // 전송
         e.preventDefault();
         sendMessage(input);
+
+        // 전송 후 textarea 높이 초기화
+        const el = textareaRef.current;
+        if (el) el.style.height = "auto";
       }
     }
   }}
 />
+
 
 
             <button
