@@ -137,19 +137,19 @@ ${openapiYAML}
 사용자에게 절대 출력하지 말고,
 요청받은 출력 형식(3줄 + 구성 리스트)만 수행하세요.
 `;
-const openapiYAML = `
+const openapiYAML = String.raw`
 openapi: 3.1.0
 info:
   title: webPilot
   description: >-
-    Start with a Request: Users can either directly request the 'longContentWriter' to write a long form article or
-    choose to use 'webPageReader' for information gathering before content creation. In both scenarios, before using the
-    'longContentWriter' service, I confirm all details of their request with the user, including the writing task
+    Start with a Request: Users can either directly request the \'longContentWriter\' to write a long form article or
+    choose to use \'webPageReader\' for information gathering before content creation. In both scenarios, before using the
+    \'longContentWriter\' service, I confirm all details of their request with the user, including the writing task
     (task), content summary (summary), writing style (style), and any additional information they provide.
 
-    Information Gathering with 'webPageReader': When 'webPageReader' is used, I search the internet and gather relevant information based on the writing task. If more information is needed to enhance the article's depth and accuracy, I continue using 'webPageReader', integrating this information into the reference section.
+    Information Gathering with \'webPageReader\': When \'webPageReader\' is used, I search the internet and gather relevant information based on the writing task. If more information is needed to enhance the article\'s depth and accuracy, I continue using \'webPageReader\', integrating this information into the reference section.
 
-    Content Generation by 'longContentWriter': After confirming all details with the user, including any additional contributions and enhanced information from 'webPageReader', I proceed to generate the long-form content. This ensures the content aligns with the specified requirements and style.
+    Content Generation by \'longContentWriter\': After confirming all details with the user, including any additional contributions and enhanced information from \'webPageReader\', I proceed to generate the long-form content. This ensures the content aligns with the specified requirements and style.
 
     Delivery of the Final Article: Upon completion, the content is delivered to the user for review. They can request revisions or additional information if necessary.
 
@@ -218,7 +218,7 @@ components:
       properties:
         task:
           type: string
-          description: The "task" field outlines the specific requirements and objectives for generating the content. This
+          description: The \"task\" field outlines the specific requirements and objectives for generating the content. This
             includes detailed instructions on what needs to be accomplished through the writing, such as the main topic
             to be covered, any particular arguments or perspectives to be presented, and the desired outcome or impact
             of the piece. This field serves as a directive for the content creation process, ensuring that the writing
@@ -230,14 +230,14 @@ components:
             use zh-CN for Simplified Chinese and zh-TW for Traditional Chinese.
         summary:
           type: string
-          description: The "summary" field encapsulates a concise overview of the writing content, presenting the core themes, key
+          description: The \"summary\" field encapsulates a concise overview of the writing content, presenting the core themes, key
             points, and primary objectives of the piece. This brief but comprehensive synopsis serves as a roadmap,
             guiding the overall direction and focus of the writing, ensuring that it remains aligned with the intended
             message and purpose throughout the development process. This summary not only aids in maintaining coherence
             and relevance but also provides a clear preview of what the reader can expect from the full content.
         reference:
           type: string
-          description: The "reference" field is a curated collection of information sourced from the Internet via WebPilot, or
+          description: The \"reference\" field is a curated collection of information sourced from the Internet via WebPilot, or
             proveded by the user, specifically tailored to enrich and support the writing task at hand. It involves a
             selective process where relevant data, facts, and insights related to the topic are gathered, ensuring that
             the content is not only well-informed and accurate but also closely aligned with the specific requirements
@@ -245,16 +245,16 @@ components:
             and pertinent information from which the article or content is crafted. This field would be long.
         style:
           type: string
-          description: The "style" field in content creation is a detailed framework encompassing three pivotal components - the
+          description: The \"style\" field in content creation is a detailed framework encompassing three pivotal components - the
             writing tone or style, the target audience, and the publication medium. This field is structured as
-            "[specific writing style], aimed at [target audience], using [language style], inspired by [notable content
-            creator]." The writing style element ranges from formal and analytical to casual and engaging, setting the
+            \"[specific writing style], aimed at [target audience], using [language style], inspired by [notable content
+            creator].\" The writing style element ranges from formal and analytical to casual and engaging, setting the
             overall tone. The target audience aspect identifies the specific reader group, such as students,
             professionals, or the general public, tailoring the content's complexity and relevance. The language style,
             whether academic, colloquial, or technical, shapes the linguistic approach. The final component, inspired by
-            a notable content creator, serves as a reference for the desired tone and approach, like "analytical and
+            a notable content creator, serves as a reference for the desired tone and approach, like \"analytical and
             concise, aimed at business professionals, using professional language, inspired by a renowned business
-            journalist." This clear and structured definition ensures the content is effectively aligned with the
+            journalist.\" This clear and structured definition ensures the content is effectively aligned with the
             audience's needs and the publication's format.
     generateContentResponse:
       type: object
@@ -282,7 +282,7 @@ components:
           description: The title of this web page
         content:
           type: string
-          description: The content of the web page's url to be summarized
+          description: The content of the web page\'s url to be summarized
         meta:
           type: object
           description: The Html meta info of the web page
@@ -328,17 +328,17 @@ components:
       properties:
         link:
           type: string
-          description: Required, The web page's url to visit and retrieve content from.
+          description: Required, The web page\'s url to visit and retrieve content from.
         ur:
           type: string
-          description: Required, a clear statement of the user's request, can be used as a search query and may include search
+          description: Required, a clear statement of the user\'s request, can be used as a search query and may include search
             operators.
         lp:
           type: boolean
           description: Required, Whether the link is directly provided by the user
         rt:
           type: boolean
-          description: If the last request doesn't meet user's need, set this to true when trying to retry another request.
+          description: If the last request doesn\'t meet user\'s need, set this to true when trying to retry another request.
         l:
           type: string
           description: Required, the language used by the user in the request, according to the ISO 639-1 standard. For Chinese,
@@ -355,8 +355,8 @@ components:
         detail:
           type: string
           description: error detail
-
 `;
+
 
 
     // messages: [{ role: "user" | "assistant", content: "..." }]
