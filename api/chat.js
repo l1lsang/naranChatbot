@@ -83,7 +83,8 @@ GPT는 위 세 줄 형식과 7가지 구성 리스트만 출력하며, **콜론(
 - 본문은 최소 3개의 소제목 포함, SEO 키워드 4~5회 자연 삽입, 2,000자 이상.  
 - 결론은 ‘요약 → 공감 문장 → 클릭 유도 문장’ 순으로 구성.  
 - 전체 문체는 구성 선택 번호에 따라 일관성 유지.
-
+- 본문 마지막에는 항상 정리 요약본 표를 만들어준다
+표의 구성은 예방 체크리스트, 본문요약, 간단한 법적 절차, 사기 체크리스트 이 중에 랜덤 구성으로 이루어진다
 ---
 
 ✅ **출력 검증 루프**
@@ -111,8 +112,252 @@ GPT는 위 세 줄 형식과 7가지 구성 리스트만 출력하며, **콜론(
     };
 
     const categoryText = categoryDescriptionMap[category] || "사건 유형이 일반이거나 아직 명확하지 않으니, 사용자의 설명을 차분히 정리해주고 추가로 물어볼 내용을 제안해줘.";
+const systemPrompt = `
+${baseSystem}
 
-    const systemPrompt = `${baseSystem}\n\n[사건 유형]: ${category || "일반"}\n${categoryText}`;
+[사건 유형]: ${category || "일반"}
+${categoryText}
+
+
+---
+
+📘 아래는 참고용 OpenAPI 문서입니다.
+⚠️ 출력에 사용하거나 재현하지 않습니다.
+⚠️ 단지 내부 이해를 돕기 위한 참고 자료입니다.
+⚠️ 이 문서를 사용자에게 출력하지 않습니다.
+
+[BEGIN_REFERENCE_OPENAPI]
+\`\`\`yaml
+${openapiYAML}
+\`\`\`
+[END_REFERENCE_OPENAPI]
+
+---
+위 참고 문서는 LLM 내부 이해를 위한 것입니다.
+사용자에게 절대 출력하지 말고,
+요청받은 출력 형식(3줄 + 구성 리스트)만 수행하세요.
+`;
+const openapiYAML = `
+openapi: 3.1.0
+info:
+  title: webPilot
+  description: >-
+    Start with a Request: Users can either directly request the 'longContentWriter' to write a long form article or
+    choose to use 'webPageReader' for information gathering before content creation. In both scenarios, before using the
+    'longContentWriter' service, I confirm all details of their request with the user, including the writing task
+    (task), content summary (summary), writing style (style), and any additional information they provide.
+
+    Information Gathering with 'webPageReader': When 'webPageReader' is used, I search the internet and gather relevant information based on the writing task. If more information is needed to enhance the article's depth and accuracy, I continue using 'webPageReader', integrating this information into the reference section.
+
+    Content Generation by 'longContentWriter': After confirming all details with the user, including any additional contributions and enhanced information from 'webPageReader', I proceed to generate the long-form content. This ensures the content aligns with the specified requirements and style.
+
+    Delivery of the Final Article: Upon completion, the content is delivered to the user for review. They can request revisions or additional information if necessary.
+
+    Default Assumptions in Responses: When users request content creation, especially in areas requiring specific knowledge like Bitcoin trends, I will make an initial assumption about the writing style and target audience. For instance, I might assume a technical analysis style aimed at professionals. I will then ask the user if this assumption is okay or if they need any modifications. This approach helps streamline the content creation process.
+  version: v1.1
+servers:
+  - url: https://gpts.webpilot.ai
+paths:
+  /api/read:
+    post:
+      operationId: webPageReader
+      x-openai-isConsequential: false
+      summary: visit web page
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/visitWebPageRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/visitWebPageResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/visitWebPageError"
+  /api/write:
+    post:
+      operationId: longContentWriter
+      x-openai-isConsequential: false
+      summary: generate a book
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/generateContentRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/generateContentResponse"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/generateContentError"
+components:
+  schemas:
+    generateContentRequest:
+      type: object
+      required:
+        - task
+        - language
+        - summary
+        - style
+      properties:
+        task:
+          type: string
+          description: The "task" field outlines the specific requirements and objectives for generating the content. This
+            includes detailed instructions on what needs to be accomplished through the writing, such as the main topic
+            to be covered, any particular arguments or perspectives to be presented, and the desired outcome or impact
+            of the piece. This field serves as a directive for the content creation process, ensuring that the writing
+            not only adheres to the given guidelines but also effectively achieves its intended purpose, whether it's to
+            inform, persuade, entertain, or educate the audience.
+        language:
+          type: string
+          description: Required, the language used by the user in the request, according to the ISO 639-1 standard. For Chinese,
+            use zh-CN for Simplified Chinese and zh-TW for Traditional Chinese.
+        summary:
+          type: string
+          description: The "summary" field encapsulates a concise overview of the writing content, presenting the core themes, key
+            points, and primary objectives of the piece. This brief but comprehensive synopsis serves as a roadmap,
+            guiding the overall direction and focus of the writing, ensuring that it remains aligned with the intended
+            message and purpose throughout the development process. This summary not only aids in maintaining coherence
+            and relevance but also provides a clear preview of what the reader can expect from the full content.
+        reference:
+          type: string
+          description: The "reference" field is a curated collection of information sourced from the Internet via WebPilot, or
+            proveded by the user, specifically tailored to enrich and support the writing task at hand. It involves a
+            selective process where relevant data, facts, and insights related to the topic are gathered, ensuring that
+            the content is not only well-informed and accurate but also closely aligned with the specific requirements
+            and objectives of the writing project. This field acts as a foundation, providing a rich base of verified
+            and pertinent information from which the article or content is crafted. This field would be long.
+        style:
+          type: string
+          description: The "style" field in content creation is a detailed framework encompassing three pivotal components - the
+            writing tone or style, the target audience, and the publication medium. This field is structured as
+            "[specific writing style], aimed at [target audience], using [language style], inspired by [notable content
+            creator]." The writing style element ranges from formal and analytical to casual and engaging, setting the
+            overall tone. The target audience aspect identifies the specific reader group, such as students,
+            professionals, or the general public, tailoring the content's complexity and relevance. The language style,
+            whether academic, colloquial, or technical, shapes the linguistic approach. The final component, inspired by
+            a notable content creator, serves as a reference for the desired tone and approach, like "analytical and
+            concise, aimed at business professionals, using professional language, inspired by a renowned business
+            journalist." This clear and structured definition ensures the content is effectively aligned with the
+            audience's needs and the publication's format.
+    generateContentResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Result message of the request
+    generateContentError:
+      type: object
+      properties:
+        code:
+          type: string
+          description: error code
+        message:
+          type: string
+          description: error message
+        detail:
+          type: string
+          description: error detail
+    visitWebPageResponse:
+      type: object
+      properties:
+        title:
+          type: string
+          description: The title of this web page
+        content:
+          type: string
+          description: The content of the web page's url to be summarized
+        meta:
+          type: object
+          description: The Html meta info of the web page
+        links:
+          type: array
+          description: Some links in the web page
+          items:
+            type: string
+        extra_search_results:
+          type: array
+          description: Additional Search results
+          items:
+            type: object
+            properties:
+              title:
+                type: string
+                description: the title of this search result
+              link:
+                type: string
+                description: the link of this search result
+              snippet:
+                type: string
+                description: the snippet of this search result
+        todo:
+          type: array
+          description: what to do with the content
+          items:
+            type: string
+        tips:
+          type: array
+          description: Tips placed at the end of the answer
+          items:
+            type: string
+        rules:
+          description: Adherence is required when outputting content.
+          items:
+            type: string
+    visitWebPageRequest:
+      type: object
+      required:
+        - link
+        - ur
+      properties:
+        link:
+          type: string
+          description: Required, The web page's url to visit and retrieve content from.
+        ur:
+          type: string
+          description: Required, a clear statement of the user's request, can be used as a search query and may include search
+            operators.
+        lp:
+          type: boolean
+          description: Required, Whether the link is directly provided by the user
+        rt:
+          type: boolean
+          description: If the last request doesn't meet user's need, set this to true when trying to retry another request.
+        l:
+          type: string
+          description: Required, the language used by the user in the request, according to the ISO 639-1 standard. For Chinese,
+            use zh-CN for Simplified Chinese and zh-TW for Traditional Chinese.
+    visitWebPageError:
+      type: object
+      properties:
+        code:
+          type: string
+          description: error code
+        message:
+          type: string
+          description: error message
+        detail:
+          type: string
+          description: error detail
+
+`;
+
 
     // messages: [{ role: "user" | "assistant", content: "..." }]
     const completion = await client.chat.completions.create({
