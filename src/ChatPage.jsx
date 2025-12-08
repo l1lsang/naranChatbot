@@ -3,9 +3,10 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { signOut } from "firebase/auth";
 import { auth } from "./firebase";
-const textareaRef = useRef(null);
+
 
 export default function ChatPage({ user }) {
+  const textareaRef = useRef(null);
   /* ---------------- 상태 ---------------- */
   const [darkMode, setDarkMode] = useState(false);
   const [toneModal, setToneModal] = useState(true); // ⭐ 모달 ON
