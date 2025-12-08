@@ -10,9 +10,10 @@ const firebaseConfig = {
   messagingSenderId: import.meta.env.VITE_FIREBASE_MSG_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
-console.log("🔥 Connected Firebase Project ID:", app.options.projectId);
 
 const app = initializeApp(firebaseConfig);
+
+console.log("🔥 Connected Firebase Project ID:", app.options.projectId);
 
 export const db = getFirestore(app);
 export const auth = getAuth(app);
