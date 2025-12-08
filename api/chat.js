@@ -1,5 +1,12 @@
 import OpenAI from "openai";
-
+import txt1 from "../src/txt/도입부 형식.txt"
+import txt2 from "../src/txt/라이브방송환전 사기란.txt"
+import txt3 from "../src/txt/로맨스스캠 사기란.txt"
+import txt4 from "../src/txt/리딩방 사기란.txt"
+import txt5 from "../src/txt/제목 구성 형식.txt"
+import txt6 from "../src/txt/주식 사기란.txt"
+import txt7 from "../src/txt/코인 사기란.txt"
+import txt8 from "../src/txt/팀미션 사기란.txt"
 export const config = {
   runtime: "edge", // 빠르고 저렴한 Edge 런타임
 };
@@ -283,7 +290,8 @@ GPT는 위 세 줄 형식과 7가지 구성 리스트만 출력하며, **콜론(
 - 문체 자연스러운가?
 
 ---
-
+${txt1}
+${txt5}를 참고해서 작성해줘
 ✅ **도입부 작성 규칙**
 제목 작성 후 반드시 도입부(3~5문장)를 작성하며, 도입부에는 키워드를 포함하지 않는다. 도입부는 다음 5가지 형식 중 하나를 자동 선택해 작성한다.
 
@@ -335,8 +343,12 @@ ${baseSystem}
 
 [사건 유형]: ${category || "일반"}
 ${categoryText}
-
-
+${txt2}
+${txt3}
+${txt4}
+${txt6}
+${txt7}
+${txt8}
 ---
 
 📘 아래는 참고용 OpenAPI 문서입니다.
