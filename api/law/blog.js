@@ -1,13 +1,13 @@
 // /api/law/blog.js
 import OpenAI from "openai";
-import txt1 from "../../src/txt/도입부 형식.txt";
-import txt2 from "../../src/txt/라이브방환전 사기란.txt";
-import txt3 from "../../src/txt/로맨스스캠 사기란.txt";
-import txt4 from "../../src/txt/리딩방 사기란.txt";
-import txt5 from "../../src/txt/제목 구성 형식.txt";
-import txt6 from "../../src/txt/주식 사기란.txt";
-import txt7 from "../../src/txt/코인 사기란.txt";
-import txt8 from "../../src/txt/팀미션 사기란.txt";
+import txt1 from "../../src/txt/1.txt";
+import txt2 from "../../src/txt/2.txt";
+import txt3 from "../../src/txt/3.txt";
+import txt4 from "../../src/txt/4.txt";
+import txt5 from "../../src/txt/5.txt";
+import txt6 from "../../src/txt/6.txt";
+import txt7 from "../../src/txt/7.txt";
+import txt8 from "../../src/txt/8.txt";
 
 export const config = { runtime: "edge" };
 
