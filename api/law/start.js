@@ -23,19 +23,20 @@ export default async function handler(req) {
     const { messages } = await req.json();
     const lastMsg = messages?.[messages.length - 1]?.content?.trim();
 
-    // 🟩 "시작" 입력 시 — JSON으로 리턴
+    // 🟩 "시작" 입력 시 → 순수 텍스트로 반환
     if (lastMsg === "시작") {
-      return new Response(
-        JSON.stringify({ reply: FIXED_TEMPLATE }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json; charset=utf-8" },
-        }
-      );
+      return new Response(FIXED_TEMPLATE, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+        },
+      });
     }
 
     // 🟩 아래는 본문 생성 로직
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const client = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
 
     const completion = await client.chat.completions.create({
       model: "gpt-4.1",
@@ -43,19 +44,19 @@ export default async function handler(req) {
       temperature: 0,
     });
 
-    return new Response(
-      JSON.stringify({ reply: completion.choices[0].message.content }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json; charset=utf-8" },
-      }
-    );
+    return new Response(completion.choices[0].message.content, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+      },
+    });
 
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response("SERVER ERROR: " + err.message, {
       status: 500,
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+      },
     });
   }
 }
-
