@@ -220,6 +220,7 @@ export default function ChatPage({ user }) {
     const convId = currentId;
 
     // user message 저장
+    console.log("🔥 Saving message to Firestore:", convId, text);
     await saveMessage(convId, "user", text);
 
     setLoading(true);
