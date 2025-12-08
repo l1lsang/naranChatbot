@@ -86,21 +86,16 @@ export default function ChatPage({ user }) {
     if (!currentId) {
       const first = conversations[0];
       setCurrentId(first.id);
-
-      // 톤이 없으면 모달 켜기
       setToneModal(!first.tone);
       return;
     }
 
-    // 선택된 방 기준으로 톤 체크
     const conv = conversations.find((c) => c.id === currentId);
     if (!conv) return;
 
-    // 🔥 톤이 없으면 모달 켬
     if (!conv.tone) {
       setToneModal(true);
     } else {
-      // 🔥 톤이 설정된 후엔 모달 자동으로 꺼짐
       setToneModal(false);
     }
   }, [conversations, currentId]);
@@ -136,14 +131,18 @@ export default function ChatPage({ user }) {
     const uid = user.uid;
     const newId = Date.now().toString();
 
-    await setDoc(doc(db, "users", uid, "conversations", newId), {
-      title: "새 상담",
-      tone: null,
-      createdAt: serverTimestamp(),
-    });
+    try {
+      await setDoc(doc(db, "users", uid, "conversations", newId), {
+        title: "새 상담",
+        tone: null,
+        createdAt: serverTimestamp(),
+      });
 
-    setCurrentId(newId);
-    setToneModal(true);
+      setCurrentId(newId);
+      setToneModal(true);
+    } catch (err) {
+      console.error("🔥 Firestore conversation create error:", err);
+    }
   };
 
   /* ---------------- Save Message ---------------- */
@@ -151,14 +150,20 @@ export default function ChatPage({ user }) {
     const uid = user.uid;
     const msgId = Date.now().toString();
 
-    await setDoc(
-      doc(db, "users", uid, "conversations", convId, "messages", msgId),
-      {
-        sender,
-        text,
-        createdAt: serverTimestamp(),
-      }
-    );
+    try {
+      await setDoc(
+        doc(db, "users", uid, "conversations", convId, "messages", msgId),
+        {
+          sender,
+          text,
+          createdAt: serverTimestamp(),
+        }
+      );
+      console.log("✅ Firestore message saved:", convId, msgId);
+    } catch (err) {
+      console.error("🔥 Firestore save error:", err);
+      throw err;
+    }
   };
 
   /* ---------------- GPT Request Builder ---------------- */
@@ -219,9 +224,13 @@ export default function ChatPage({ user }) {
 
     const convId = currentId;
 
-    // user message 저장
-    console.log("🔥 Saving message to Firestore:", convId, text);
-    await saveMessage(convId, "user", text);
+    try {
+      console.log("🔥 Saving message to Firestore:", convId, text);
+      await saveMessage(convId, "user", text);
+    } catch {
+      // 저장 실패하면 GPT 호출 안 하고 중단
+      return;
+    }
 
     setLoading(true);
 
@@ -234,8 +243,11 @@ export default function ChatPage({ user }) {
 
       const reply = await requestGpt(convId, buildMessagesForApi(tempConv));
 
-      // bot message 저장
-      await saveMessage(convId, "bot", reply);
+      try {
+        await saveMessage(convId, "bot", reply);
+      } catch {
+        // 봇 메시지 저장 실패해도 일단 UI는 돌아가게 둠
+      }
     } finally {
       setLoading(false);
       setInput("");
@@ -243,39 +255,27 @@ export default function ChatPage({ user }) {
       const el = textareaRef.current;
       if (el) el.style.height = "auto";
     }
-    try {
-  await setDoc(
-    doc(db, "users", uid, "conversations", convId, "messages", msgId),
-    {
-      sender,
-      text,
-      createdAt: serverTimestamp(),
-    }
-  );
-} catch (err) {
-  console.error("🔥 Firestore save error:", err);
-}
-
   };
-  
 
   /* ---------------- Select Tone ---------------- */
   const selectTone = async (toneName) => {
     const uid = user.uid;
 
-    await updateDoc(doc(db, "users", uid, "conversations", currentId), {
-      tone: toneName,
-    });
+    try {
+      await updateDoc(doc(db, "users", uid, "conversations", currentId), {
+        tone: toneName,
+      });
 
-    // 🔥 Firestore 스냅샷 적용 전에 잠깐 true로 덮어써지는 문제 해결
-    setTimeout(() => setToneModal(false), 30);
+      setTimeout(() => setToneModal(false), 30);
 
-    // 톤 안내 메시지 저장
-    await saveMessage(
-      currentId,
-      "bot",
-      `좋습니다! 선택하신 블로그 톤은 **${toneName}** 입니다.\n"시작"이라고 입력하면 템플릿을 안내해드릴게요.`
-    );
+      await saveMessage(
+        currentId,
+        "bot",
+        `좋습니다! 선택하신 블로그 톤은 **${toneName}** 입니다.\n"시작"이라고 입력하면 템플릿을 안내해드릴게요.`
+      );
+    } catch (err) {
+      console.error("🔥 Tone select / save error:", err);
+    }
   };
 
   /* ---------------- Tone Options ---------------- */
@@ -291,10 +291,9 @@ export default function ChatPage({ user }) {
   /* ---------------- UI ---------------- */
   return (
     <div className="w-screen h-screen flex overflow-hidden relative">
-
       {/* ------------ Tone Modal Background ------------ */}
       {toneModal && currentConv && (
-        <div className="absolute inset-0 backdrop-blur-sm bg-black/20 z-20"></div>
+        <div className="absolute inset-0 backdrop-blur-sm bg-black/20 z-20" />
       )}
 
       {/* ------------ Tone Modal ------------ */}
