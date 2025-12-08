@@ -18,26 +18,24 @@ const FIXED_TEMPLATE = `\
 7. 실제 피해 사례를 중점으로 한 글  
 `;
 
-
 export default async function handler(req) {
   try {
     const { messages } = await req.json();
     const lastMsg = messages?.[messages.length - 1]?.content?.trim();
 
-    // 사용자가 '시작'이라고 하면 => GPT NO! 그냥 하드코딩된 양식만 출력
+    // 🟩 "시작" 입력 시 — JSON으로 리턴
     if (lastMsg === "시작") {
-      return new Response(FIXED_TEMPLATE, {
-        status: 200,
-        headers: { "Content-Type": "text/plain; charset=utf-8" },
-      });
+      return new Response(
+        JSON.stringify({ reply: FIXED_TEMPLATE }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json; charset=utf-8" },
+        }
+      );
     }
 
-    // 여기 아래는 '본문 생성' 로직.
-    // 입력이 3줄 모두 채워졌을 때 GPT를 호출하는 영역.
-
-    const client = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+    // 🟩 아래는 본문 생성 로직
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
     const completion = await client.chat.completions.create({
       model: "gpt-4.1",
@@ -45,15 +43,19 @@ export default async function handler(req) {
       temperature: 0,
     });
 
-    return new Response(completion.choices[0].message.content, {
-      status: 200,
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
-    });
+    return new Response(
+      JSON.stringify({ reply: completion.choices[0].message.content }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+      }
+    );
 
   } catch (err) {
-    return new Response(
-      JSON.stringify({ error: err.message }),
-      { status: 500 }
-    );
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }
+
