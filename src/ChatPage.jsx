@@ -221,28 +221,63 @@ export default function ChatPage({ user }) {
 
   /* ---------------- Send Message ---------------- */
   const sendMessage = async (text) => {
-    // undefined · null · 숫자 등 비정상값 방지
-    if (!text || typeof text !== "string") return;
-    if (!text.trim() || !currentConv?.tone || loading) return;
+  if (!text.trim() || !currentConv?.tone || loading) return;
 
-    const convId = currentId;
-    setLoading(true);
+  const convId = currentId;
 
-    // 1) Firestore 저장
-    await saveMessage(convId, "user", text);
+  // 1) User 메시지 Firestore 저장
+  await saveMessage(convId, "user", text);
 
-    // 2) 화면 즉시 반영 (임시 유저 말풍선)
-    setConversations((prev) =>
-      prev.map((c) =>
+  // 2) UI 즉시 반영
+  setConversations(prev =>
+    prev.map(c =>
+      c.id === convId
+        ? {
+            ...c,
+            messages: [
+              ...c.messages,
+              {
+                id: "temp-" + Date.now(),
+                sender: "user",
+                text,
+                createdAt: { seconds: Date.now() / 1000 },
+              },
+            ],
+          }
+        : c
+    )
+  );
+
+  // -----------------------------------------
+  // ⭐⭐⭐ "시작" 입력 시 즉시 템플릿UI 출력 ⭐⭐⭐
+  // -----------------------------------------
+  if (text.trim() === "시작") {
+    // GPT 호출 안 기다리고 바로 화면에 템플릿 넣기
+    const template = 
+`✅키워드:
+✅사기내용:
+✅구성선택:
+
+1. 사기 개연성을 중심으로 한 글
+2. 주의해야할 위험요소에 대해 디테일하게 분석한 글
+3. 실제로 드러난 정황을 바탕으로 경고형 분석한 글
+4. 피해예방과 도움이 되는 내용을 중점으로 쓴 글
+5. 법적 지식과 판례에 관해 전문가의 시점으로 쓴 글
+6. 웹사이트 검색 기반으로 실제 뉴스와 실제 사례들을 토대로 한 글
+7. 실제 피해 사례를 중점으로 한 글`;
+
+    // UI에 즉시 출력
+    setConversations(prev =>
+      prev.map(c =>
         c.id === convId
           ? {
               ...c,
               messages: [
                 ...c.messages,
                 {
-                  id: "temp-user-" + Date.now(),
-                  sender: "user",
-                  text,
+                  id: "temp-bot-" + Date.now(),
+                  sender: "bot",
+                  text: template,
                   createdAt: { seconds: Date.now() / 1000 },
                 },
               ],
@@ -251,46 +286,60 @@ export default function ChatPage({ user }) {
       )
     );
 
-    try {
-      const conv = conversations.find((c) => c.id === convId);
-      const tempConv = {
-        ...conv,
-        messages: [...conv.messages, { sender: "user", text }],
-      };
+    // Firestore에도 저장(중요!)
+    await saveMessage(convId, "bot", template);
 
-      const reply = await requestGpt(convId, buildMessagesForApi(tempConv));
+    // 입력창 초기화 + 로딩 제거
+    setInput("");
+    setLoading(false);
 
-      // 3) Firestore에 bot 메세지 저장
-      await saveMessage(convId, "bot", reply);
+    return;
+  }
 
-      // 4) 화면 즉시 반영 (임시 봇 말풍선)
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === convId
-            ? {
-                ...c,
-                messages: [
-                  ...c.messages,
-                  {
-                    id: "temp-bot-" + Date.now(),
-                    sender: "bot",
-                    text: reply,
-                    createdAt: { seconds: Date.now() / 1000 },
-                  },
-                ],
-              }
-            : c
-        )
-      );
-    } finally {
-      setLoading(false);
-      setInput("");
+  // -----------------------------------------
+  // ⭐⭐⭐ 그 외에는 기존 로직대로 GPT 호출 ⭐⭐⭐
+  // -----------------------------------------
 
-      if (textareaRef.current) {
-        textareaRef.current.style.height = "auto";
-      }
-    }
-  };
+  setLoading(true);
+
+  try {
+    const conv = conversations.find((c) => c.id === convId);
+    const tempConv = {
+      ...conv,
+      messages: [...conv.messages, { sender: "user", text }],
+    };
+
+    const reply = await requestGpt(convId, buildMessagesForApi(tempConv));
+
+    // Firestore에 bot 메시지 저장
+    await saveMessage(convId, "bot", reply);
+
+    // UI 반영
+    setConversations(prev =>
+      prev.map(c =>
+        c.id === convId
+          ? {
+              ...c,
+              messages: [
+                ...c.messages,
+                {
+                  id: "temp-bot-" + Date.now(),
+                  sender: "bot",
+                  text: reply,
+                  createdAt: { seconds: Date.now() / 1000 },
+                },
+              ],
+            }
+          : c
+      )
+    );
+  } finally {
+    setLoading(false);
+    setInput("");
+    textareaRef.current.style.height = "auto";
+  }
+};
+
 
   /* ---------------- Tone Select ---------------- */
   const selectTone = async (toneName) => {
