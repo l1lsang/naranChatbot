@@ -9,7 +9,8 @@ import txt6 from "../../src/txt/6.txt";
 import txt7 from "../../src/txt/7.txt";
 import txt8 from "../../src/txt/8.txt";
 
-export const config = { runtime: "edge" };
+export const config = { runtime: "nodejs20.x" };
+
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -39,7 +40,7 @@ export default async function handler(req) {
     }
 
     // YAML (전체 raw 그대로 넣어도 JSON 파싱 안전)
-    const openapiYAML = String.raw`
+   const openapiYAML = String.raw`
 openapi: 3.1.0
 info:
   title: webPilot
@@ -210,8 +211,8 @@ components:
           type: string
         detail:
           type: string
-
 `;
+
 
     // 기본 SYSTEM PROMPT
     const baseSystem = `

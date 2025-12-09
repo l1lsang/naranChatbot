@@ -1,8 +1,6 @@
 import OpenAI from "openai";
 
-export const config = {
-  runtime: "edge",
-};
+export const config = { runtime: "nodejs20.x" };
 
 const FIXED_TEMPLATE = `
 ✅키워드:  
