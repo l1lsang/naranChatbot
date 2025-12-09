@@ -538,12 +538,25 @@ export default function ChatPage({ user }) {
                   }
                 }}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    if (e.shiftKey) return;
-                    e.preventDefault();
-                    sendMessage(input);
-                  }
-                }}
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+
+    const trimmed = input.trim();
+    if (!trimmed) return;
+
+    // 1) ⭐ 엔터 누르는 순간 input 먼저 비우기
+    setInput("");
+
+    // 2) ⭐ textarea 높이 즉시 재설정
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
+
+    // 3) ⭐ 원본 텍스트로 메시지 전송
+    sendMessage(trimmed);
+  }
+}}
+
               />
 
               <button
