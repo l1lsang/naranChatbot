@@ -15,7 +15,6 @@ import {
 } from "firebase/firestore";
 
 export default function ChatPage({ user }) {
-  /* ---------------- Refs ---------------- */
   const textareaRef = useRef(null);
   const chatRef = useRef(null);
 
@@ -30,7 +29,7 @@ export default function ChatPage({ user }) {
 
   const currentConv = conversations.find((c) => c.id === currentId);
 
-  /* ---------------- Firestore: Load Conversations & Messages ---------------- */
+  /* ---------------- Load Conversations ---------------- */
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -65,7 +64,6 @@ export default function ChatPage({ user }) {
         });
       }
 
-      // 최신 상담이 위로 오게 정렬
       list.sort(
         (a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
       );
@@ -76,7 +74,7 @@ export default function ChatPage({ user }) {
     return () => unsubscribe();
   }, [user]);
 
-  /* ---------------- Auto Select Conversation & Tone Modal ---------------- */
+  /* ---------------- Auto Select Conversation ---------------- */
   useEffect(() => {
     if (conversations.length === 0) {
       setCurrentId(null);
@@ -92,9 +90,7 @@ export default function ChatPage({ user }) {
     }
 
     const conv = conversations.find((c) => c.id === currentId);
-    if (conv) {
-      setToneModal(!conv.tone);
-    }
+    if (conv) setToneModal(!conv.tone);
   }, [conversations, currentId]);
 
   /* ---------------- Auto Scroll ---------------- */
@@ -104,7 +100,7 @@ export default function ChatPage({ user }) {
     }
   }, [currentConv?.messages, loading]);
 
-  /* ---------------- Dark Mode 초기 로드 ---------------- */
+  /* ---------------- Dark Mode ---------------- */
   useEffect(() => {
     const saved = localStorage.getItem("theme");
     if (saved === "dark") {
@@ -113,7 +109,6 @@ export default function ChatPage({ user }) {
     }
   }, []);
 
-  /* ---------------- Dark Mode 토글 시 DOM 반영 ---------------- */
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add("dark");
@@ -124,35 +119,17 @@ export default function ChatPage({ user }) {
     }
   }, [darkMode]);
 
-  /* ---------------- Firestore: Save Message ---------------- */
-  const saveMessage = async (convId, sender, text) => {
-    const uid = user.uid;
-    const msgId = Date.now().toString();
-
-    await setDoc(
-      doc(db, "users", uid, "conversations", convId, "messages", msgId),
-      {
-        sender,
-        text: text ?? "", // 안전하게 비어있는 문자열로 보정
-        createdAt: serverTimestamp(),
-        clientTime: Date.now() / 1000,
-      }
-    );
-  };
-
-  /* ---------------- 새 상담 생성 ---------------- */
+  /* ---------------- Create New Conversation ---------------- */
   const addConversation = async () => {
     const uid = user.uid;
     const newId = Date.now().toString();
 
-    // 1) 상담 문서 생성
     await setDoc(doc(db, "users", uid, "conversations", newId), {
       title: "새 상담",
       tone: null,
       createdAt: serverTimestamp(),
     });
 
-    // 2) 첫 안내 메시지 (Firestore 저장)
     const firstMsgId = (Date.now() + 1).toString();
 
     await setDoc(
@@ -169,133 +146,146 @@ export default function ChatPage({ user }) {
     setToneModal(true);
   };
 
-  /* ---------------- GPT 호출용 메시지 배열 생성 ---------------- */
+  /* ---------------- Save Message ---------------- */
+  const saveMessage = async (convId, sender, text) => {
+    const uid = user.uid;
+    const msgId = Date.now().toString();
+
+    await setDoc(
+      doc(db, "users", uid, "conversations", convId, "messages", msgId),
+      {
+        sender,
+        text: text ?? "",
+        createdAt: serverTimestamp(),
+        clientTime: Date.now() / 1000,
+      }
+    );
+  };
+
+  /* ---------------- GPT API ---------------- */
   const buildMessagesForApi = (conv) =>
     conv.messages.map((m) => ({
       role: m.sender === "user" ? "user" : "assistant",
-      content: m.text || "",
+      content: m.text,
     }));
 
-  /* ---------------- 공통 JSON 파서 (HTML 에러 대응) ---------------- */
-  const safeJsonParse = async (res) => {
-    const text = await res.text();
-    try {
-      return JSON.parse(text);
-    } catch (e) {
-      console.error("JSON Parse 실패, 응답 원문:", text);
-      throw new Error("서버 응답을 JSON으로 해석하지 못했어요.");
-    }
-  };
-
-  /* ---------------- GPT 라우팅 / API 호출 ---------------- */
   const requestGpt = async (convId, messagesForApi) => {
-    const last =
-      messagesForApi[messagesForApi.length - 1]?.content?.trim() || "";
+    const last = messagesForApi[messagesForApi.length - 1]?.content?.trim();
 
-    const tone = currentConv?.tone;
-
-    try {
-      // 1) "시작" → 템플릿 전용 API (/api/law/start)
-      if (last === "시작") {
-        const res = await fetch("/api/law/start", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: messagesForApi }),
-        });
-
-        if (!res.ok) {
-          console.error("템플릿 API 오류:", res.status);
-          throw new Error("템플릿 API 오류");
-        }
-
-        const data = await safeJsonParse(res);
-        return data.reply || "템플릿을 불러오지 못했어요.";
-      }
-
-      // 2) 3줄 템플릿 + 구성선택이 채워진 경우 → 블로그 본문 생성 (/api/law/blog)
-      const isBlogFormFilled =
-        last.includes("✅키워드:") &&
-        last.includes("✅사기내용:") &&
-        last.includes("✅구성선택:");
-
-      if (isBlogFormFilled) {
-        const res = await fetch("/api/law/blog", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            messages: messagesForApi,
-            category: tone || "일반",
-          }),
-        });
-
-        if (!res.ok) {
-          console.error("블로그 API 오류:", res.status);
-          throw new Error("블로그 API 오류");
-        }
-
-        const data = await safeJsonParse(res);
-        return data.reply || "블로그 본문을 생성하지 못했어요.";
-      }
-
-      // 3) 그 외는 모두 일반 상담 (/api/chat)
+    // 1) “시작” → 템플릿 요청
+    if (last === "시작") {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: messagesForApi }),
       });
 
-      if (!res.ok) {
-        console.error("일반 상담 API 오류:", res.status);
-        throw new Error("상담 API 오류");
-      }
-
-      const data = await safeJsonParse(res);
-      return data.reply || "답변을 생성하지 못했어요.";
-    } catch (err) {
-      console.error("requestGpt 에러:", err);
-      return "⚠️ 서버와 통신 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
+      const data = await res.json();
+      return data.reply;
     }
+
+    // 2) 템플릿 내용이 채워졌을 때도 /api/chat
+    const isStartTemplateFilled =
+      /✅키워드:\s*\S+/i.test(last) ||
+      /✅사기내용:\s*\S+/i.test(last) ||
+      /✅구성선택:\s*[1-7]/i.test(last);
+
+    if (isStartTemplateFilled) {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: messagesForApi }),
+      });
+
+      const data = await res.json();
+      return data.reply;
+    }
+
+    // 3) 일반 대화
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: messagesForApi }),
+    });
+
+    const data = await res.json();
+    return data.reply;
   };
 
-  /* ---------------- 메시지 전송 ---------------- */
+  /* ---------------- Send Message ---------------- */
   const sendMessage = async (text) => {
+    // undefined · null · 숫자 등 비정상값 방지
+    if (!text || typeof text !== "string") return;
     if (!text.trim() || !currentConv?.tone || loading) return;
 
     const convId = currentId;
-
     setLoading(true);
 
+    // 1) Firestore 저장
+    await saveMessage(convId, "user", text);
+
+    // 2) 화면 즉시 반영 (임시 유저 말풍선)
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === convId
+          ? {
+              ...c,
+              messages: [
+                ...c.messages,
+                {
+                  id: "temp-user-" + Date.now(),
+                  sender: "user",
+                  text,
+                  createdAt: { seconds: Date.now() / 1000 },
+                },
+              ],
+            }
+          : c
+      )
+    );
+
     try {
-      // 1) 사용자 메시지 Firestore 저장
-      await saveMessage(convId, "user", text);
-
-      // 2) GPT에 보낼 대화 구성 (로컬 state 기준 + 방금 메시지 추가)
       const conv = conversations.find((c) => c.id === convId);
-      const tempConv = conv
-        ? {
-            ...conv,
-            messages: [...conv.messages, { sender: "user", text }],
-          }
-        : {
-            id: convId,
-            messages: [{ sender: "user", text }],
-          };
+      const tempConv = {
+        ...conv,
+        messages: [...conv.messages, { sender: "user", text }],
+      };
 
-      // 3) GPT 요청
       const reply = await requestGpt(convId, buildMessagesForApi(tempConv));
 
-      // 4) GPT 응답 Firestore 저장
+      // 3) Firestore에 bot 메세지 저장
       await saveMessage(convId, "bot", reply);
+
+      // 4) 화면 즉시 반영 (임시 봇 말풍선)
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === convId
+            ? {
+                ...c,
+                messages: [
+                  ...c.messages,
+                  {
+                    id: "temp-bot-" + Date.now(),
+                    sender: "bot",
+                    text: reply,
+                    createdAt: { seconds: Date.now() / 1000 },
+                  },
+                ],
+              }
+            : c
+        )
+      );
     } finally {
       setLoading(false);
       setInput("");
 
-      const el = textareaRef.current;
-      if (el) el.style.height = "auto";
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+      }
     }
   };
 
-  /* ---------------- 톤 선택 ---------------- */
+  /* ---------------- Tone Select ---------------- */
   const selectTone = async (toneName) => {
     const uid = user.uid;
 
@@ -303,10 +293,8 @@ export default function ChatPage({ user }) {
       tone: toneName,
     });
 
-    // 모달 살짝 딜레이 후 닫기 (애니메이션 느낌)
     setTimeout(() => setToneModal(false), 30);
 
-    // 선택 안내 메시지
     await saveMessage(
       currentId,
       "bot",
@@ -314,7 +302,7 @@ export default function ChatPage({ user }) {
     );
   };
 
-  /* ---------------- 톤 옵션 ---------------- */
+  /* ---------------- Tone Options ---------------- */
   const toneOptions = [
     { name: "전문가 시점(법률 분석)", desc: "법률·판례 기반의 전문 분석." },
     { name: "경고형 톤", desc: "위험과 주의 메시지를 강조." },
@@ -327,12 +315,13 @@ export default function ChatPage({ user }) {
   /* ---------------- UI ---------------- */
   return (
     <div className="w-screen h-screen flex overflow-hidden relative">
-      {/* Tone 선택 시 배경 블러 */}
+
+      {/* Tone Modal Background */}
       {toneModal && currentConv && (
-        <div className="absolute inset-0 backdrop-blur-sm bg-black/20 z-20" />
+        <div className="absolute inset-0 backdrop-blur-sm bg-black/20 z-20"></div>
       )}
 
-      {/* Tone 선택 모달 */}
+      {/* Tone Modal */}
       {toneModal && currentConv && (
         <div className="absolute inset-0 z-30 flex items-center justify-center">
           <div className="bg-white dark:bg-neutral-800 p-8 rounded-2xl w-[420px] shadow-xl">
@@ -356,13 +345,13 @@ export default function ChatPage({ user }) {
         </div>
       )}
 
-      {/* 메인 레이아웃 */}
+      {/* Main layout */}
       <div
         className={`flex flex-1 ${
           toneModal && currentConv ? "pointer-events-none blur-sm" : ""
         }`}
       >
-        {/* 사이드바 */}
+        {/* Sidebar */}
         <aside className="w-64 bg-white dark:bg-neutral-900 border-r dark:border-neutral-700 p-4 flex flex-col">
           <button
             onClick={() => signOut(auth)}
@@ -399,9 +388,7 @@ export default function ChatPage({ user }) {
                     : "bg-gray-100 dark:bg-neutral-800 dark:text-gray-300"
                 }`}
               >
-                <div className="font-semibold text-sm truncate">
-                  {conv.title}
-                </div>
+                <div className="font-semibold text-sm truncate">{conv.title}</div>
                 {conv.tone && (
                   <div className="text-xs opacity-70 mt-1">톤: {conv.tone}</div>
                 )}
@@ -410,35 +397,29 @@ export default function ChatPage({ user }) {
           </div>
         </aside>
 
-        {/* 채팅 영역 */}
-        {conversations.length === 0 ? (
+        {/* Chat Area */}
+        {!currentConv ? (
           <main className="flex-1 flex flex-col items-center justify-center bg-gray-50 dark:bg-black text-center px-4">
             <h2 className="text-2xl font-semibold dark:text-white mb-3">
               아직 상담이 없습니다
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              좌측 상단의 <strong>“+ 새 상담”</strong>을 눌러
-              <br />
-              상담을 시작해 주세요.
+              좌측 상단의 <strong>“+ 새 상담”</strong>을 눌러<br />
+              상담을 시작하세요.
             </p>
           </main>
         ) : (
           <main className="flex-1 flex flex-col bg-gray-50 dark:bg-black">
             <header className="p-4 border-b dark:border-neutral-700 bg-white dark:bg-neutral-900">
-              <h1 className="text-xl font-semibold dark:text-white">
-                상담 챗봇
-              </h1>
+              <h1 className="text-xl font-semibold dark:text-white">상담 챗봇</h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {user.email} 님
               </p>
             </header>
 
-            {/* 메시지 리스트 */}
-            <div
-              ref={chatRef}
-              className="flex-1 overflow-y-auto p-6 space-y-4"
-            >
-              {(currentConv?.messages ?? []).map((msg) => (
+            {/* Messages */}
+            <div ref={chatRef} className="flex-1 overflow-y-auto p-6 space-y-4">
+              {(currentConv.messages ?? []).map((msg) => (
                 <div
                   key={msg.id}
                   className={`flex ${
@@ -453,7 +434,7 @@ export default function ChatPage({ user }) {
                     }`}
                   >
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {msg.text || ""}
+                      {msg.text}
                     </ReactMarkdown>
                   </div>
                 </div>
@@ -468,7 +449,7 @@ export default function ChatPage({ user }) {
               )}
             </div>
 
-            {/* 입력창 */}
+            {/* Input */}
             <div className="p-4 border-t dark:border-neutral-700 bg-white dark:bg-neutral-900 flex gap-2">
               <textarea
                 ref={textareaRef}
@@ -480,16 +461,16 @@ export default function ChatPage({ user }) {
                 }`}
                 placeholder={
                   currentConv?.tone
-                    ? 'Shift + Enter = 줄바꿈 / Enter = 전송\n"시작"을 입력하면 템플릿이 나와요.'
+                    ? "Shift + Enter = 줄바꿈 / Enter = 전송"
                     : "먼저 블로그 톤을 선택해주세요"
                 }
                 value={input}
                 onChange={(e) => {
                   setInput(e.target.value);
-                  const el = textareaRef.current;
-                  if (el) {
-                    el.style.height = "auto";
-                    el.style.height = el.scrollHeight + "px";
+                  if (textareaRef.current) {
+                    textareaRef.current.style.height = "auto";
+                    textareaRef.current.style.height =
+                      textareaRef.current.scrollHeight + "px";
                   }
                 }}
                 onKeyDown={(e) => {
@@ -497,9 +478,6 @@ export default function ChatPage({ user }) {
                     if (e.shiftKey) return;
                     e.preventDefault();
                     sendMessage(input);
-
-                    const el = textareaRef.current;
-                    if (el) el.style.height = "auto";
                   }
                 }}
               />
