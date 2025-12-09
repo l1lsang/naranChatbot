@@ -1,31 +1,40 @@
-// /api/law/blog.js
+// /api/law/blog.js (Node.js 안정형)
 import OpenAI from "openai";
-import txt1 from "../../src/txt/1.txt";
-import txt2 from "../../src/txt/2.txt";
-import txt3 from "../../src/txt/3.txt";
-import txt4 from "../../src/txt/4.txt";
-import txt5 from "../../src/txt/5.txt";
-import txt6 from "../../src/txt/6.txt";
-import txt7 from "../../src/txt/7.txt";
-import txt8 from "../../src/txt/8.txt";
+import fs from "fs";
+import path from "path";
 
 export const config = { runtime: "nodejs" };
 
+// ----------------------
+// TXT 파일 안전 로드
+// ----------------------
+function loadTxt(name) {
+  return fs.readFileSync(path.join(process.cwd(), "src/txt", name), "utf8");
+}
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const txt1 = loadTxt("1.txt");
+const txt2 = loadTxt("2.txt");
+const txt3 = loadTxt("3.txt");
+const txt4 = loadTxt("4.txt");
+const txt5 = loadTxt("5.txt");
+const txt6 = loadTxt("6.txt");
+const txt7 = loadTxt("7.txt");
+const txt8 = loadTxt("8.txt");
 
-// JSON-only helper
+// JSON helper
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
     status,
-    headers: { "Content-Type": "application/json; charset=utf-8" },
+    headers: { "Content-Type": "application/json; charset=utf-8" }
   });
+
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export default async function handler(req) {
   try {
-    // 안정적인 JSON 파싱
+    // ----------------------
+    // 안전한 JSON 파싱
+    // ----------------------
     let body;
     try {
       body = await req.json();
@@ -39,8 +48,10 @@ export default async function handler(req) {
       return json({ error: "messages 배열이 필요합니다." }, 400);
     }
 
-    // YAML (전체 raw 그대로 넣어도 JSON 파싱 안전)
-   const openapiYAML = String.raw`
+    // ----------------------
+    // OpenAPI YAML (raw)
+    // ----------------------
+    const openapiYAML = String.raw`
 openapi: 3.1.0
 info:
   title: webPilot
@@ -213,44 +224,40 @@ components:
           type: string
 `;
 
-
-    // 기본 SYSTEM PROMPT
+    // ----------------------
+    // Base System Prompt
+    // ----------------------
     const baseSystem = `
-이 GPT는 10년 이상의 실무 경험을 가진 변호사의 시점에서 사기 관련 법률 블로그 글을 전문적으로 작성한다.
+이 GPT는 10년 이상의 실무 경험을 가진 변호사의 시점에서 사기 관련 법률 블로그 글을 작성한다.
 
-⚖️ 모든 원고는 반드시 다음 순서를 따른다:
-제목 → 도입부(3~5문장) → 서론 → 본문(3개 이상 SEO 소제목 포함) → 결론(요약·공감·CTA)
+⚖️ 구성 규칙
+제목 → 도입부(3~5문장) → 서론 → 본문(3개 이상 소제목) → 결론(요약·공감·CTA)
 
-제목 또는 도입부가 누락되면 GPT는 자동으로 해당 부분부터 재생성한다.
----
-
-✅ 제목 규칙
-1️⃣ 30자 권장, 최대 35자 이내
-2️⃣ 형식: [키워드] + [피해유형] + [대응/조치]
-3️⃣ 공공기관 언급 금지
-
+제목 규칙:
+- 30~35자
+- 키워드 + 피해유형 + 대응/조치
+- '사기' 포함, 공공기관 언급 금지
 ${txt1}
 ${txt5}를 참고해서 작성
 
----
-
 도입부 규칙:
-1️⃣ 표 형식
-2️⃣ 대화체
-3️⃣ 체크리스트
-4️⃣ 뉴스 인용
-5️⃣ FAQ
+1) 표 형식
+2) 대화체
+3) 체크리스트
+4) 뉴스 인용
+5) FAQ 중 자동 선택
 
-본문 규칙:
-- 소제목 3개 이상
+본문:
 - 2000자 이상
-- 마지막에 요약 표 포함
+- SEO 소제목 3개 이상
+- 마지막에 요약표 추가
 
-🚫 특정 사기 플랫폼 문구 금지
-
+🚫 특정 주식 플랫폼 사기 문구 금지
 `;
 
-    // 최종 SYSTEM PROMPT
+    // ----------------------
+    // Final System Prompt
+    // ----------------------
     const systemPrompt = `
 ${baseSystem}
 
@@ -269,7 +276,9 @@ ${openapiYAML}
 \`\`\`
 `;
 
-    // GPT 요청
+    // ----------------------
+    // GPT 호출
+    // ----------------------
     const completion = await client.chat.completions.create({
       model: "gpt-4o-mini",
       temperature: 0,
@@ -279,14 +288,11 @@ ${openapiYAML}
       ],
     });
 
-    const reply = completion.choices?.[0]?.message?.content || "";
+    const reply = completion?.choices?.[0]?.message?.content || "";
 
     return json({ reply });
   } catch (err) {
     console.error("🔥 blog API error:", err);
-    return json(
-      { error: "서버 오류 발생", detail: err.message },
-      500
-    );
+    return json({ error: "서버 오류 발생", detail: err.message }, 500);
   }
 }
