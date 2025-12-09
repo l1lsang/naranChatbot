@@ -489,9 +489,17 @@ export default function ChatPage({ user }) {
                         : "bg-white dark:bg-neutral-800 dark:text-gray-200 rounded-bl-none"
                     }`}
                   >
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {msg.text}
-                    </ReactMarkdown>
+                    <ReactMarkdown
+  remarkPlugins={[remarkGfm]}
+  components={{
+    p: ({ children }) => (
+      <p className="whitespace-pre-line">{children}</p>
+    ),
+  }}
+>
+  {msg.text}
+</ReactMarkdown>
+
                   </div>
                 </div>
               ))}
