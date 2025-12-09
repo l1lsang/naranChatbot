@@ -9,7 +9,7 @@ import txt6 from "../../src/txt/6.txt";
 import txt7 from "../../src/txt/7.txt";
 import txt8 from "../../src/txt/8.txt";
 
-export const config = { runtime: "nodejs20.x" };
+export const config = { runtime: "nodejs" };
 
 
 const client = new OpenAI({
