@@ -170,39 +170,13 @@ export default function ChatPage({ user }) {
     }));
 
   const requestGpt = async (convId, messagesForApi) => {
-    const last = messagesForApi[messagesForApi.length - 1]?.content?.trim();
+  const last = messagesForApi[messagesForApi.length - 1]?.content?.trim();
 
-    // 1) “시작” → 템플릿 요청
-    if (last === "시작") {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: messagesForApi }),
-      });
-
-      const data = await res.json();
-      return data.reply;
-    }
-
-    // 2) 템플릿 내용이 채워졌을 때도 /api/chat
-    const isStartTemplateFilled =
-      /✅키워드:\s*\S+/i.test(last) ||
-      /✅사기내용:\s*\S+/i.test(last) ||
-      /✅구성선택:\s*[1-7]/i.test(last);
-
-    if (isStartTemplateFilled) {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: messagesForApi }),
-      });
-
-      const data = await res.json();
-      return data.reply;
-    }
-
-    // 3) 일반 대화
-    const res = await fetch("/api/chat", {
+  // =========================================================
+  // 1) "시작" 입력 → 시작 템플릿 (/api/law/start)
+  // =========================================================
+  if (last === "시작") {
+    const res = await fetch("/api/law/start", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messages: messagesForApi }),
@@ -210,7 +184,40 @@ export default function ChatPage({ user }) {
 
     const data = await res.json();
     return data.reply;
-  };
+  }
+
+  // =========================================================
+  // 2) 템플릿 3줄 중 하나라도 채워짐 → /api/law/blog
+  // =========================================================
+  const isStartTemplateFilled =
+    /✅키워드:\s*\S+/i.test(last) ||
+    /✅사기내용:\s*\S+/i.test(last) ||
+    /✅구성선택:\s*[1-7]/i.test(last);
+
+  if (isStartTemplateFilled) {
+    const res = await fetch("/api/law/blog", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: messagesForApi }),
+    });
+
+    const data = await res.json();
+    return data.reply;
+  }
+
+  // =========================================================
+  // 3) 나머지 → 일반 GPT (/api/chat)
+  // =========================================================
+  const res = await fetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages: messagesForApi }),
+  });
+
+  const data = await res.json();
+  return data.reply;
+};
+
 
   /* ---------------- Send Message ---------------- */
   const sendMessage = async (text) => {
