@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { HexColorPicker } from "react-colorful";
 import { signOut } from "firebase/auth";
 import { auth, db } from "./firebase";
 
@@ -15,6 +16,7 @@ import {
   serverTimestamp,
   query,
   where,
+  deleteDoc,
 } from "firebase/firestore";
 
 export default function ChatPage({ user }) {
@@ -34,7 +36,14 @@ export default function ChatPage({ user }) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const currentConv = conversations.find((c) => c.id === currentId);
+  // 프로젝트 편집 모달 상태
+  const [editingProject, setEditingProject] = useState(null);
+  const [editProjName, setEditProjName] = useState("");
+  const [editProjColor, setEditProjColor] = useState("#6366F1");
+  const [editProjIcon, setEditProjIcon] = useState("📁");
+
+  const currentConv = conversations.find((c) => c.id === currentId) || null;
+  const currentProject = projects.find((p) => p.id === currentProjectId) || null;
 
   /* ---------------- Load Projects ---------------- */
   useEffect(() => {
@@ -116,18 +125,13 @@ export default function ChatPage({ user }) {
 
       setConversations(list);
 
-      // 현재 상담이 없으면 첫 번째 상담 자동 선택
-      if (list.length > 0 && !currentId) {
-        setCurrentId(list[0].id);
-      }
+      // GPT 스타일: 자동으로 상담 선택하지 않음
       if (list.length === 0) {
         setCurrentId(null);
       }
     });
 
     return () => unsubscribe();
-    // currentId는 여기서 의존성에 넣지 않음 (불필요한 재실행 방지)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, currentProjectId]);
 
   /* ---------------- Auto Scroll ---------------- */
@@ -162,7 +166,7 @@ export default function ChatPage({ user }) {
     if (!name || !name.trim()) return;
 
     const systemPrompt = window.prompt(
-      "이 프로젝트의 기본 프롬프트(톤/지시문)를 입력해주세요.\n(나중에도 수정 가능)"
+      "이 프로젝트의 기본 프롬프트(톤/지시문)를 입력해주세요.\n(나중에 수정 가능)"
     );
 
     const uid = user.uid;
@@ -170,6 +174,8 @@ export default function ChatPage({ user }) {
 
     await setDoc(doc(db, "users", uid, "projects", newId), {
       name: name.trim(),
+      icon: "📁",
+      color: "#6366F1",
       systemPrompt: systemPrompt?.trim() || "",
       createdAt: serverTimestamp(),
     });
@@ -180,29 +186,103 @@ export default function ChatPage({ user }) {
     setCurrentId(null);
   };
 
+  /* ---------------- Edit Project (Name / Color / Icon) ---------------- */
+  const openProjectEditor = (project) => {
+    setEditingProject(project);
+    setEditProjName(project.name || "");
+    setEditProjColor(project.color || "#6366F1");
+    setEditProjIcon(project.icon || "📁");
+  };
+
+  const saveProjectEdit = async () => {
+    if (!editingProject || !user?.uid) return;
+    const uid = user.uid;
+
+    await updateDoc(doc(db, "users", uid, "projects", editingProject.id), {
+      name: editProjName.trim() || editingProject.name,
+      color: editProjColor || "#6366F1",
+      icon: editProjIcon || "📁",
+    });
+
+    setEditingProject(null);
+  };
+
+  const deleteProject = async (projectId) => {
+    if (
+      !window.confirm(
+        "정말 이 프로젝트를 삭제할까요?\n해당 프로젝트의 모든 상담과 메시지도 함께 삭제됩니다."
+      )
+    )
+      return;
+
+    const uid = user.uid;
+
+    // 1) 프로젝트 삭제
+    await deleteDoc(doc(db, "users", uid, "projects", projectId));
+
+    // 2) 해당 프로젝트의 상담들 삭제
+    const convSnap = await getDocs(
+      query(
+        collection(db, "users", uid, "conversations"),
+        where("projectId", "==", projectId)
+      )
+    );
+
+    for (let conv of convSnap.docs) {
+      const convId = conv.id;
+
+      const msgSnap = await getDocs(
+        collection(db, "users", uid, "conversations", convId, "messages")
+      );
+
+      for (let m of msgSnap.docs) {
+        await deleteDoc(
+          doc(
+            db,
+            "users",
+            uid,
+            "conversations",
+            convId,
+            "messages",
+            m.id
+          )
+        );
+      }
+
+      await deleteDoc(doc(db, "users", uid, "conversations", convId));
+    }
+
+    if (currentProjectId === projectId) {
+      setCurrentProjectId(null);
+      setConversations([]);
+      setCurrentId(null);
+    }
+  };
+
   /* ---------------- Create New Conversation ---------------- */
   const addConversation = async () => {
-    if (!currentProjectId) return; // 보호 로직
+    if (!currentProjectId) return;
 
     const uid = user.uid;
     const newId = Date.now().toString();
 
-    // 선택된 프로젝트의 systemPrompt 불러오기
     let systemPrompt = "";
     const projSnap = await getDoc(
       doc(db, "users", uid, "projects", currentProjectId)
     );
     systemPrompt = projSnap.data()?.systemPrompt || "";
 
+    const title =
+      window.prompt("새 상담 제목을 입력하세요.", "새 상담") || "새 상담";
+
     await setDoc(doc(db, "users", uid, "conversations", newId), {
-      title: "새 상담",
+      title: title.trim(),
       tone: null,
       projectId: currentProjectId,
       systemPrompt,
       createdAt: serverTimestamp(),
     });
 
-    // 안내용 첫 메시지 (선택사항, UX 좋게)
     const firstMsgId = (Date.now() + 1).toString();
     await setDoc(
       doc(
@@ -225,6 +305,45 @@ export default function ChatPage({ user }) {
 
     setCurrentId(newId);
     setToneModal(true);
+  };
+
+  /* ---------------- Conversation Delete / Rename ---------------- */
+  const deleteConversation = async (convId) => {
+    if (!user?.uid) return;
+    if (!window.confirm("이 상담을 삭제할까요?")) return;
+
+    const uid = user.uid;
+
+    const msgSnap = await getDocs(
+      collection(db, "users", uid, "conversations", convId, "messages")
+    );
+    for (let m of msgSnap.docs) {
+      await deleteDoc(
+        doc(db, "users", uid, "conversations", convId, "messages", m.id)
+      );
+    }
+
+    await deleteDoc(doc(db, "users", uid, "conversations", convId));
+
+    if (currentId === convId) {
+      setCurrentId(null);
+    }
+  };
+
+  const renameConversation = async (convId) => {
+    if (!user?.uid) return;
+
+    const conv = conversations.find((c) => c.id === convId);
+    const newTitle = window.prompt(
+      "새 상담 제목을 입력하세요.",
+      conv?.title || "상담"
+    );
+    if (!newTitle?.trim()) return;
+
+    const uid = user.uid;
+    await updateDoc(doc(db, "users", uid, "conversations", convId), {
+      title: newTitle.trim(),
+    });
   };
 
   /* ---------------- Save Message ---------------- */
@@ -259,7 +378,6 @@ export default function ChatPage({ user }) {
   const requestGpt = async (convId, messagesForApi) => {
     const last = messagesForApi[messagesForApi.length - 1]?.content?.trim();
 
-    // 1) "시작" 입력 → 시작 템플릿 (/api/law/start)
     if (last === "시작") {
       const res = await fetch("/api/law/start", {
         method: "POST",
@@ -271,7 +389,6 @@ export default function ChatPage({ user }) {
       return data.reply;
     }
 
-    // 2) 템플릿 3줄 중 하나라도 채워짐 → /api/law/blog
     const isStartTemplateFilled =
       /✅키워드:\s*\S+/i.test(last) ||
       /✅사기내용:\s*\S+/i.test(last) ||
@@ -288,7 +405,6 @@ export default function ChatPage({ user }) {
       return data.reply;
     }
 
-    // 3) 나머지 → 일반 GPT (/api/chat)
     const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -306,10 +422,8 @@ export default function ChatPage({ user }) {
     const convId = currentId;
     const trimmed = text.trim();
 
-    // 1) User 메시지 Firestore 저장
     await saveMessage(convId, "user", trimmed);
 
-    // 2) UI 즉시 반영
     setConversations((prev) =>
       prev.map((c) =>
         c.id === convId
@@ -329,7 +443,6 @@ export default function ChatPage({ user }) {
       )
     );
 
-    // "시작" → 템플릿만 바로 출력
     if (trimmed === "시작") {
       const template = `✅키워드:
 ✅사기내용:
@@ -368,7 +481,6 @@ export default function ChatPage({ user }) {
       return;
     }
 
-    // 일반 GPT 호출
     setLoading(true);
 
     try {
@@ -468,6 +580,72 @@ export default function ChatPage({ user }) {
         </div>
       )}
 
+      {/* 프로젝트 편집 모달 */}
+      {editingProject && (
+        <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/40">
+          <div className="bg-white dark:bg-neutral-900 rounded-2xl p-6 w-[380px] shadow-xl">
+            <h2 className="text-lg font-semibold mb-4 dark:text-white">
+              프로젝트 설정
+            </h2>
+
+            <label className="block text-xs mb-1 dark:text-gray-300">
+              프로젝트 이름
+            </label>
+            <input
+              className="w-full mb-3 px-3 py-2 rounded border dark:bg-neutral-800 dark:border-neutral-700 dark:text-white text-sm"
+              value={editProjName}
+              onChange={(e) => setEditProjName(e.target.value)}
+            />
+
+            <label className="block text-xs mb-1 dark:text-gray-300">
+              아이콘 (이모지)
+            </label>
+            <input
+              className="w-full mb-3 px-3 py-2 rounded border dark:bg-neutral-800 dark:border-neutral-700 dark:text-white text-sm"
+              value={editProjIcon}
+              onChange={(e) => setEditProjIcon(e.target.value)}
+              placeholder="예: ⚖️, 📘, 📝"
+            />
+
+            <label className="block text-xs mb-2 dark:text-gray-300">
+              프로젝트 색상
+            </label>
+            <div className="mb-4 flex items-center gap-3">
+              <HexColorPicker
+                color={editProjColor}
+                onChange={setEditProjColor}
+              />
+              <div className="flex-1">
+                <input
+                  className="w-full px-3 py-2 rounded border dark:bg-neutral-800 dark:border-neutral-700 dark:text-white text-sm mb-2"
+                  value={editProjColor}
+                  onChange={(e) => setEditProjColor(e.target.value)}
+                />
+                <div
+                  className="w-full h-8 rounded"
+                  style={{ backgroundColor: editProjColor }}
+                ></div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 mt-2">
+              <button
+                onClick={() => setEditingProject(null)}
+                className="px-3 py-1.5 rounded text-sm bg-neutral-200 dark:bg-neutral-700 dark:text-white"
+              >
+                취소
+              </button>
+              <button
+                onClick={saveProjectEdit}
+                className="px-3 py-1.5 rounded text-sm bg-indigo-600 text-white"
+              >
+                저장
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main layout */}
       <div
         className={`flex flex-1 ${
@@ -475,9 +653,9 @@ export default function ChatPage({ user }) {
         }`}
       >
         {/* Sidebar */}
-        <aside className="w-64 bg-white dark:bg-neutral-900 border-r dark:border-neutral-700 p-4 flex flex-col justify-between">
-          {/* 상단 */}
-          <div>
+        <aside className="w-72 bg-white dark:bg-neutral-900 border-r dark:border-neutral-700 flex flex-col">
+          {/* 상단 고정 영역 */}
+          <div className="p-4 pb-3 border-b dark:border-neutral-700 sticky top-0 bg-white dark:bg-neutral-900 z-10">
             {/* 다크모드 토글 */}
             <button
               onClick={() => setDarkMode(!darkMode)}
@@ -487,10 +665,9 @@ export default function ChatPage({ user }) {
             </button>
 
             {/* 프로젝트 섹션 */}
-            <div className="mb-6">
+            <div>
               <div className="flex items-center justify-between mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
                 <span>프로젝트</span>
-
                 <button
                   onClick={addProject}
                   className="text-[11px] px-2 py-1 rounded bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-100"
@@ -499,43 +676,78 @@ export default function ChatPage({ user }) {
                 </button>
               </div>
 
-              <div className="space-y-2 max-h-[22vh] overflow-y-auto">
+              <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
                 {projects.length === 0 ? (
                   <p className="text-[11px] text-gray-400 dark:text-gray-500">
                     프로젝트가 없습니다.
                   </p>
                 ) : (
-                  projects.map((p) => (
-                    <div
-                      key={p.id}
-                      onClick={() => {
-                        setCurrentProjectId(p.id);
-                        setConversations([]);
-                        setCurrentId(null);
-                      }}
-                      className={`p-3 rounded-xl cursor-pointer transition border ${
-                        currentProjectId === p.id
-                          ? "bg-indigo-50 dark:bg-neutral-700 border-indigo-300 dark:border-neutral-500 text-indigo-800 dark:text-white"
-                          : "bg-gray-100 dark:bg-neutral-800 border-transparent text-gray-700 dark:text-gray-300"
-                      }`}
-                    >
-                      <div className="font-semibold text-sm truncate">
-                        {p.name}
+                  projects.map((p) => {
+                    const color = p.color || "#6366F1";
+                    const icon = p.icon || "📁";
+                    const selected = currentProjectId === p.id;
+
+                    return (
+                      <div
+                        key={p.id}
+                        className="relative group"
+                      >
+                        <div
+                          onClick={() => {
+                            setCurrentProjectId(p.id);
+                            setCurrentId(null);
+                          }}
+                          className="p-3 rounded-xl cursor-pointer transition border flex items-center gap-2"
+                          style={{
+                            background: selected ? color + "22" : "#f3f4f6",
+                            borderColor: selected ? color : "transparent",
+                            color: selected ? color : "#555",
+                          }}
+                        >
+                          <span className="text-lg">{icon}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-sm truncate">
+                              {p.name}
+                            </div>
+                          </div>
+
+                          {/* 수정 버튼 */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openProjectEditor(p);
+                            }}
+                            className="text-[11px] px-2 py-1 rounded bg-white/70 dark:bg-neutral-800/70 text-gray-600 dark:text-gray-200 opacity-0 group-hover:opacity-100 transition"
+                          >
+                            수정
+                          </button>
+
+                          {/* 삭제 버튼 (아이콘 버전) */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteProject(p.id);
+                            }}
+                            className="ml-1 text-[12px] text-red-500 opacity-0 group-hover:opacity-100 transition"
+                            title="프로젝트 삭제"
+                          >
+                            ✕
+                          </button>
+                        </div>
                       </div>
-                      <div className="text-[10px] opacity-60 mt-1">
-                        프로젝트 선택
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>
+          </div>
 
+          {/* 아래 스크롤 영역 */}
+          <div className="flex-1 overflow-y-auto p-4 pt-3">
             {/* 상담 섹션 */}
-            <div>
+            <div className="mb-6">
               <div className="flex items-center justify-between mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
                 <span>상담</span>
-
                 <button
                   onClick={addConversation}
                   disabled={!currentProjectId}
@@ -553,8 +765,12 @@ export default function ChatPage({ user }) {
                 <p className="text-[11px] text-gray-400 dark:text-gray-500">
                   프로젝트를 먼저 선택하세요.
                 </p>
+              ) : conversations.length === 0 ? (
+                <p className="text-[11px] text-gray-400 dark:text-gray-500">
+                  아직 이 프로젝트에는 상담이 없습니다.
+                </p>
               ) : (
-                <div className="overflow-y-auto space-y-2 max-h-[40vh]">
+                <div className="space-y-2">
                   {conversations.map((conv) => (
                     <div
                       key={conv.id}
@@ -562,55 +778,147 @@ export default function ChatPage({ user }) {
                         setCurrentId(conv.id);
                         setToneModal(!conv.tone);
                       }}
-                      className={`p-3 rounded-lg cursor-pointer transition ${
+                      className={`p-3 rounded-lg cursor-pointer transition border flex items-center gap-2 ${
                         conv.id === currentId
-                          ? "bg-indigo-100 dark:bg-neutral-700 text-indigo-700 dark:text-white"
-                          : "bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-gray-300"
+                          ? "bg-indigo-100 dark:bg-neutral-700 text-indigo-700 dark:text-white border-indigo-300 dark:border-neutral-500"
+                          : "bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-gray-300 border-transparent"
                       }`}
                     >
-                      <div className="font-semibold text-sm truncate">
-                        {conv.title}
-                      </div>
-                      {conv.tone && (
-                        <div className="text-xs opacity-70 mt-1">
-                          톤: {conv.tone}
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-sm truncate">
+                          {conv.title}
                         </div>
-                      )}
+                        {conv.tone && (
+                          <div className="text-[11px] opacity-70 mt-0.5">
+                            톤: {conv.tone}
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          renameConversation(conv.id);
+                        }}
+                        className="text-[11px] px-2 py-1 rounded bg-white/70 dark:bg-neutral-700/70 text-gray-600 dark:text-gray-200"
+                      >
+                        이름
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteConversation(conv.id);
+                        }}
+                        className="text-[11px] px-2 py-1 rounded bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300"
+                      >
+                        삭제
+                      </button>
                     </div>
                   ))}
                 </div>
               )}
             </div>
-          </div>
 
-          {/* 하단: 이메일 + 로그아웃 */}
-          <div className="mt-6 border-t pt-4 dark:border-neutral-700">
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 break-all">
-              {user?.email}
-            </p>
+            {/* 하단: 이메일 + 로그아웃 */}
+            <div className="mt-6 border-t pt-4 dark:border-neutral-700">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 break-all">
+                {user?.email}
+              </p>
 
-            <button
-              onClick={() => signOut(auth)}
-              className="w-full bg-red-500 text-white px-4 py-2 rounded-lg"
-            >
-              로그아웃
-            </button>
+              <button
+                onClick={() => signOut(auth)}
+                className="w-full bg-red-500 text-white px-4 py-2 rounded-lg"
+              >
+                로그아웃
+              </button>
+            </div>
           </div>
         </aside>
 
-        {/* Chat Area */}
-        {!currentConv ? (
+        {/* 오른쪽 메인 영역 (GPT 스타일 3단 분기) */}
+        {!currentProjectId ? (
+          // 1) 프로젝트 선택 안 된 상태
           <main className="flex-1 flex flex-col items-center justify-center bg-gray-50 dark:bg-black text-center px-4">
             <h2 className="text-2xl font-semibold dark:text-white mb-3">
-              아직 상담이 없습니다
+              프로젝트를 선택해주세요
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              좌측에서 <strong>프로젝트</strong>를 선택하고,
+              좌측 상단에서 <strong>프로젝트</strong>를 선택하거나
               <br />
-              <strong>“+ 새 상담”</strong>을 눌러 상담을 시작하세요.
+              <strong>“+ 새 프로젝트”</strong>로 시작할 수 있습니다.
             </p>
           </main>
+        ) : !currentId ? (
+          // 2) 프로젝트는 선택됐지만 상담 선택 안 된 상태 → 상담 목록 화면
+          <main className="flex-1 bg-gray-50 dark:bg-black p-8 overflow-y-auto">
+            <h1 className="text-2xl font-bold dark:text-white mb-2">
+              {currentProject?.icon || "📁"} {currentProject?.name}
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
+              이 프로젝트의 상담 목록입니다.
+            </p>
+
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold dark:text-white">
+                상담 목록
+              </h2>
+              <button
+                onClick={addConversation}
+                className="px-3 py-1.5 rounded-lg text-sm bg-indigo-600 text-white"
+              >
+                + 새 상담
+              </button>
+            </div>
+
+            {conversations.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                아직 상담이 없습니다. 오른쪽 상단의{" "}
+                <strong>“+ 새 상담”</strong> 버튼을 눌러 시작해보세요.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {conversations.map((conv) => (
+                  <div
+                    key={conv.id}
+                    className="p-4 bg-white dark:bg-neutral-900 rounded-xl shadow cursor-pointer flex items-center justify-between"
+                    onClick={() => setCurrentId(conv.id)}
+                  >
+                    <div>
+                      <div className="font-semibold text-sm dark:text-white">
+                        {conv.title}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {conv.messages.length}개의 메시지
+                        {conv.tone && ` · 톤: ${conv.tone}`}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          renameConversation(conv.id);
+                        }}
+                        className="text-[11px] px-2 py-1 rounded bg-white dark:bg-neutral-800 text-gray-600 dark:text-gray-200 border dark:border-neutral-700"
+                      >
+                        이름 변경
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteConversation(conv.id);
+                        }}
+                        className="text-[11px] px-2 py-1 rounded bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300"
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </main>
         ) : (
+          // 3) 상담까지 선택된 상태 → 채팅 화면
           <main className="flex-1 flex flex-col bg-gray-50 dark:bg-black">
             <header className="p-4 border-b dark:border-neutral-700 bg-white dark:bg-neutral-900">
               <h1 className="text-xl font-semibold dark:text-white">
@@ -619,12 +927,10 @@ export default function ChatPage({ user }) {
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {user.email} 님
               </p>
-              {currentProjectId && (
+              {currentProject && (
                 <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
-                  프로젝트:{" "}
-                  {
-                    projects.find((p) => p.id === currentProjectId)?.name
-                  }
+                  프로젝트: {currentProject.icon || "📁"}{" "}
+                  {currentProject.name} / 상담: {currentConv?.title}
                 </p>
               )}
             </header>
@@ -634,7 +940,7 @@ export default function ChatPage({ user }) {
               ref={chatRef}
               className="flex-1 overflow-y-auto p-6 space-y-4"
             >
-              {(currentConv.messages ?? []).map((msg) => (
+              {(currentConv?.messages ?? []).map((msg) => (
                 <div
                   key={msg.id}
                   className={`flex ${
