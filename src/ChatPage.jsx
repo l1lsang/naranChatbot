@@ -408,50 +408,61 @@ export default function ChatPage({ user }) {
         }`}
       >
         {/* Sidebar */}
-        <aside className="w-64 bg-white dark:bg-neutral-900 border-r dark:border-neutral-700 p-4 flex flex-col">
-          <button
-            onClick={() => signOut(auth)}
-            className="mb-4 bg-red-500 text-white px-4 py-2 rounded-lg"
-          >
-            로그아웃
-          </button>
+        <aside className="w-64 bg-white dark:bg-neutral-900 border-r dark:border-neutral-700 p-4 flex flex-col justify-between">
 
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className="mb-4 bg-indigo-600 text-white px-4 py-2 rounded-lg dark:bg-neutral-700"
-          >
-            {darkMode ? "🌞 라이트 모드" : "🌙 다크 모드"}
-          </button>
+  {/* ▶️ 상단 : 대화 생성 + 목록 */}
+  <div>
+    <button
+      onClick={() => setDarkMode(!darkMode)}
+      className="mb-4 bg-indigo-600 text-white px-4 py-2 rounded-lg dark:bg-neutral-700"
+    >
+      {darkMode ? "🌞 라이트 모드" : "🌙 다크 모드"}
+    </button>
 
-          <button
-            onClick={addConversation}
-            className="mb-4 bg-indigo-600 text-white px-4 py-2 rounded-lg dark:bg-neutral-700"
-          >
-            + 새 상담
-          </button>
+    <button
+      onClick={addConversation}
+      className="mb-4 bg-indigo-600 text-white px-4 py-2 rounded-lg dark:bg-neutral-700"
+    >
+      + 새 상담
+    </button>
 
-          <div className="flex-1 overflow-y-auto space-y-2">
-            {conversations.map((conv) => (
-              <div
-                key={conv.id}
-                onClick={() => {
-                  setCurrentId(conv.id);
-                  setToneModal(!conv.tone);
-                }}
-                className={`p-3 rounded-lg cursor-pointer ${
-                  conv.id === currentId
-                    ? "bg-indigo-100 dark:bg-neutral-700 text-indigo-700 dark:text-white"
-                    : "bg-gray-100 dark:bg-neutral-800 dark:text-gray-300"
-                }`}
-              >
-                <div className="font-semibold text-sm truncate">{conv.title}</div>
-                {conv.tone && (
-                  <div className="text-xs opacity-70 mt-1">톤: {conv.tone}</div>
-                )}
-              </div>
-            ))}
-          </div>
-        </aside>
+    <div className="overflow-y-auto space-y-2 max-h-[70vh]">
+      {conversations.map((conv) => (
+        <div
+          key={conv.id}
+          onClick={() => {
+            setCurrentId(conv.id);
+            setToneModal(!conv.tone);
+          }}
+          className={`p-3 rounded-lg cursor-pointer ${
+            conv.id === currentId
+              ? "bg-indigo-100 dark:bg-neutral-700 text-indigo-700 dark:text-white"
+              : "bg-gray-100 dark:bg-neutral-800 dark:text-gray-300"
+          }`}
+        >
+          <div className="font-semibold text-sm truncate">{conv.title}</div>
+          {conv.tone && <div className="text-xs opacity-70 mt-1">톤: {conv.tone}</div>}
+        </div>
+      ))}
+    </div>
+  </div>
+
+  {/* ▶️ 하단 고정: 이메일 + 로그아웃 */}
+  <div className="mt-6 border-t pt-4 dark:border-neutral-700">
+    <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 break-all">
+      {user?.email}
+    </p>
+
+    <button
+      onClick={() => signOut(auth)}
+      className="w-full bg-red-500 text-white px-4 py-2 rounded-lg"
+    >
+      로그아웃
+    </button>
+  </div>
+
+</aside>
+
 
         {/* Chat Area */}
         {!currentConv ? (
