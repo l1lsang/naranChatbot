@@ -693,193 +693,212 @@ export default function ChatPage({ user }) {
       {/* Main Layout */}
       <div className="flex flex-1">
         {/* Sidebar */}
-       {/* Sidebar (GPT Style) */}
-<aside className="w-72 bg-[#111] border-r border-[#2a2a2a] flex flex-col">
+<aside className="
+  w-72 
+  border-r 
+  flex flex-col
 
-  {/* 상단 고정 영역 */}
-  <div className="p-4 pb-3 border-b border-[#2a2a2a] sticky top-0 bg-[#111] z-10">
+  bg-[#f8f9fa] text-[#111] border-[#e5e7eb]      /* 라이트 */
+  dark:bg-[#111] dark:text-gray-200 dark:border-[#2a2a2a]  /* 다크 */
+">
+  {/* 상단 영역 */}
+  <div className="
+    p-4 pb-3 border-b sticky top-0 z-10
 
+    bg-[#f8f9fa] border-[#e5e7eb]
+    dark:bg-[#111] dark:border-[#2a2a2a]
+  ">
     {/* 🌙 다크모드 버튼 */}
     <button
       onClick={() => setDarkMode(!darkMode)}
-      className="mb-4 w-full bg-[#2a2a2a] hover:bg-[#333] text-gray-200 px-4 py-2 rounded-lg"
+      className="
+        mb-4 w-full px-4 py-2 rounded-lg
+
+        bg-[#e5e7eb] text-[#111] 
+        hover:bg-[#dcdfe3]
+
+        dark:bg-[#2a2a2a] dark:text-gray-200 
+        dark:hover:bg-[#333]
+      "
     >
       {darkMode ? "🌞 라이트 모드" : "🌙 다크 모드"}
     </button>
 
-    {/* 프로젝트 섹션 */}
+    {/* 🔧 프로젝트 섹션 */}
     <div>
-      <div className="flex items-center justify-between mb-2 text-xs font-semibold text-gray-400">
+      <div className="flex items-center justify-between mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
         <span>프로젝트</span>
+
         <button
           onClick={addProject}
-          className="text-[11px] px-2 py-1 rounded bg-[#1f1f1f] text-gray-300 border border-[#2f2f2f]"
+          className="
+            text-[11px] px-2 py-1 rounded border
+
+            bg-[#f0f0f0] text-[#444] border-[#ddd]
+            dark:bg-[#1f1f1f] dark:text-gray-300 dark:border-[#3a3a3a]
+          "
         >
           + 새 프로젝트
         </button>
       </div>
 
-      {/* 전체 상담 보기 */}
+      {/* 전체 상담 버튼 */}
       <button
         onClick={() => setCurrentProjectId(null)}
-        className={`w-full text-left text-xs px-3 py-2 mb-1 rounded-lg border ${
-          currentProjectId === null
-            ? "bg-[#2a2a2a] border-[#555] text-white"
-            : "bg-[#1a1a1a] border-[#2f2f2f] text-gray-400 hover:bg-[#222]"
-        }`}
+        className={`
+          w-full text-left text-xs px-3 py-2 mb-1 rounded-lg border transition
+          ${
+            currentProjectId === null
+              ? `
+                bg-[#e5e7eb] border-[#cbd5e1] text-[#111]
+                dark:bg-[#2a2a2a] dark:border-[#555] dark:text-white
+              `
+              : `
+                bg-[#ffffff] border-[#e5e7eb] text-gray-600 hover:bg-[#f3f3f3]
+                dark:bg-[#1a1a1a] dark:border-[#2f2f2f] dark:text-gray-300 
+                dark:hover:bg-[#222]
+              `
+          }
+        `}
       >
         📚 전체 상담 보기
       </button>
 
       {/* 프로젝트 목록 */}
       <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 mt-1">
-        {projects.length === 0 ? (
-          <p className="text-[11px] text-gray-500">프로젝트가 없습니다.</p>
-        ) : (
-          projects.map((p) => {
-            const selected = p.id === currentProjectId;
-            const color = p.color || "#8b5cf6";
+        {projects.map((p) => {
+          const selected = p.id === currentProjectId;
+          const color = p.color || "#6366f1";
 
-            return (
-              <div key={p.id} className="group relative">
+          return (
+            <div key={p.id} className="group relative">
+              <button
+                onClick={() => setCurrentProjectId(p.id)}
+                className="
+                  w-full flex items-center gap-2 p-3 rounded-lg border transition text-left
+                  bg-[#ffffff] text-[#111] hover:bg-[#f3f3f3]
+                  dark:bg-[#1a1a1a] dark:text-gray-300 dark:hover:bg-[#222]
+                "
+                style={{
+                  borderColor: selected ? color : "transparent",
+                }}
+              >
+                <span className="text-lg">📁</span>
+                <span className="font-semibold text-sm truncate">{p.name}</span>
+              </button>
+
+              {/* 수정/삭제 버튼 */}
+              <div className="
+                absolute right-2 top-1/2 -translate-y-1/2 
+                flex gap-1 opacity-0 group-hover:opacity-100 transition
+              ">
                 <button
-                  onClick={() => setCurrentProjectId(p.id)}
-                  className={`
-                    w-full flex items-center gap-2 p-3 rounded-lg border transition text-left
-                    ${
-                      selected
-                        ? "bg-[#2a2a2a] text-white"
-                        : "bg-[#1a1a1a] text-gray-300 hover:bg-[#222]"
-                    }
-                  `}
-                  style={{
-                    borderColor: selected ? color : "#2f2f2f",
-                  }}
+                  onClick={() => openProjectModal(p)}
+                  className="
+                    text-[10px] px-2 py-1 rounded border
+                    bg-white text-gray-700 border-gray-300
+                    dark:bg-[#1f1f1f] dark:text-gray-300 dark:border-[#3a3a3a]
+                  "
                 >
-                  <span className="text-lg">📁</span>
-                  <span className="font-semibold text-sm truncate">{p.name}</span>
+                  수정
                 </button>
-
-                {/* 수정/삭제 버튼 */}
-                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                  <button
-                    onClick={() => openProjectModal(p)}
-                    className="text-[10px] px-2 py-1 rounded bg-[#1f1f1f] text-gray-300 border border-[#3a3a3a]"
-                  >
-                    수정
-                  </button>
-                  <button
-                    onClick={() => deleteProject(p.id)}
-                    className="text-[10px] px-2 py-1 rounded bg-red-900/30 text-red-300 border border-red-900/50"
-                  >
-                    삭제
-                  </button>
-                </div>
+                <button
+                  onClick={() => deleteProject(p.id)}
+                  className="
+                    text-[10px] px-2 py-1 rounded border
+                    bg-red-100 text-red-700 border-red-300
+                    dark:bg-red-900/40 dark:text-red-300 dark:border-red-900/60
+                  "
+                >
+                  삭제
+                </button>
               </div>
-            );
-          })
-        )}
+            </div>
+          );
+        })}
       </div>
     </div>
   </div>
 
-  {/* 상담 목록 */}
+  {/* ------------------------ */}
+  {/* 아래: 상담 목록 + 계정 */}
+  {/* ------------------------ */}
   <div className="flex-1 overflow-y-auto p-4 pt-3">
-
     <div className="mb-6">
-      <div className="flex items-center justify-between mb-2 text-xs font-semibold text-gray-400">
+      <div className="flex items-center justify-between mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
         <span>
-          상담{" "}
-          {currentProject
-            ? `(프로젝트: ${currentProject.name})`
-            : "(전체)"}
+          상담 {currentProject ? `(프로젝트: ${currentProject.name})` : "(전체)"}
         </span>
 
         <button
           onClick={addConversation}
-          className="text-[11px] px-2 py-1 rounded bg-[#333] text-gray-200 border border-[#3a3a3a]"
+          className="
+            text-[11px] px-2 py-1 rounded border
+            bg-[#e5e7eb] text-[#111] border-[#ddd]
+            dark:bg-[#333] dark:text-gray-200 dark:border-[#3a3a3a]
+          "
         >
           + 새 상담
         </button>
       </div>
 
-      {/* 상담 없음 */}
-      {conversations.length === 0 ? (
-        <p className="text-[11px] text-gray-500">아직 상담이 없습니다.</p>
-      ) : (
-        <div className="space-y-2">
-          {conversations.map((conv) => {
-            const proj =
-              projects.find((p) => p.id === conv.projectId) || null;
-            const color = conv.color || proj?.color || "#666";
-            const selected = conv.id === currentId;
+      {/* 상담 목록 */}
+      {conversations.map((conv) => {
+        const proj = projects.find((p) => p.id === conv.projectId);
+        const color = proj?.color || "#a3a3a3";
+        const selected = conv.id === currentId;
 
-            return (
-              <div key={conv.id} className="flex items-center gap-2">
-                {/* 상담 카드 */}
-                <div
-                  onClick={() => setCurrentId(conv.id)}
-                  className={`
-                    flex-1 p-3 rounded-lg border cursor-pointer transition
-                    ${
-                      selected
-                        ? "bg-[#2a2a2a] text-white"
-                        : "bg-[#1a1a1a] text-gray-300 hover:bg-[#222]"
-                    }
-                  `}
-                  style={{
-                    borderColor: selected ? color : "#2f2f2f",
-                  }}
-                >
-                  <div className="font-semibold text-sm truncate">
-                    {conv.title}
-                  </div>
+        return (
+          <div key={conv.id} className="flex items-center gap-2">
+            <div
+              onClick={() => setCurrentId(conv.id)}
+              className="
+                flex-1 p-3 rounded-lg border cursor-pointer transition
+                bg-white text-[#111]
+                hover:bg-[#f3f3f3]
+                dark:bg-[#1a1a1a] dark:text-gray-300
+                dark:hover:bg-[#222]
+              "
+              style={{
+                borderColor: selected ? color : "transparent",
+              }}
+            >
+              <div className="font-semibold text-sm truncate">{conv.title}</div>
+            </div>
 
-                  <div className="flex items-center gap-2 mt-1">
-                    {proj && (
-                      <span
-                        className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-[#1f1f1f] text-gray-300 border border-[#2f2f2f]"
-                      >
-                        <span
-                          className="w-2 h-2 rounded-full"
-                          style={{ backgroundColor: proj.color }}
-                        />
-                        {proj.name}
-                      </span>
-                    )}
-                    {conv.tone && (
-                      <span className="text-[10px] text-gray-400 truncate">
-                        톤: {conv.tone}
-                      </span>
-                    )}
-                  </div>
-                </div>
+            {/* 이름 변경 */}
+            <button
+              onClick={() => renameConversation(conv.id)}
+              className="
+                text-[10px] px-2 py-1 rounded border
+                bg-white text-gray-700 border-gray-300
+                dark:bg-[#1f1f1f] dark:text-gray-300 dark:border-[#3a3a3a]
+              "
+            >
+              이름
+            </button>
 
-                {/* 이름 수정 */}
-                <button
-                  onClick={() => renameConversation(conv.id)}
-                  className="text-[10px] px-2 py-1 rounded bg-[#1f1f1f] text-gray-300 border border-[#3a3a3a]"
-                >
-                  이름
-                </button>
-
-                {/* 삭제 */}
-                <button
-                  onClick={() => deleteConversation(conv.id)}
-                  className="text-[10px] px-2 py-1 rounded bg-red-900/30 text-red-300 border border-red-900/50"
-                >
-                  삭제
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
+            {/* 삭제 */}
+            <button
+              onClick={() => deleteConversation(conv.id)}
+              className="
+                text-[10px] px-2 py-1 rounded border
+                bg-red-100 text-red-700 border-red-300
+                dark:bg-red-900/40 dark:text-red-300 dark:border-red-900/60
+              "
+            >
+              삭제
+            </button>
+          </div>
+        );
+      })}
     </div>
 
-    {/* 계정 정보 */}
-    <div className="mt-6 border-t border-[#2a2a2a] pt-4">
-      <p className="text-xs text-gray-500 mb-3 break-all">{user?.email}</p>
+    {/* 계정 */}
+    <div className="mt-6 border-t pt-4 border-[#e5e7eb] dark:border-[#2a2a2a]">
+      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 break-all">
+        {user?.email}
+      </p>
 
       <button
         onClick={() => signOut(auth)}
@@ -890,6 +909,7 @@ export default function ChatPage({ user }) {
     </div>
   </div>
 </aside>
+
 
 
         {/* 오른쪽 메인 영역 */}
