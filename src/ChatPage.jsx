@@ -10,8 +10,11 @@ import {
   setDoc,
   updateDoc,
   getDocs,
+  getDoc,
   onSnapshot,
   serverTimestamp,
+  query,
+  where,
 } from "firebase/firestore";
 
 export default function ChatPage({ user }) {
@@ -21,111 +24,111 @@ export default function ChatPage({ user }) {
   /* ---------------- State ---------------- */
   const [darkMode, setDarkMode] = useState(false);
   const [toneModal, setToneModal] = useState(false);
+
+  const [projects, setProjects] = useState([]);
+  const [currentProjectId, setCurrentProjectId] = useState(null);
+
   const [conversations, setConversations] = useState([]);
   const [currentId, setCurrentId] = useState(null);
-const [projects, setProjects] = useState([]);
+
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-const [currentProjectId, setCurrentProjectId] = useState(null);
 
   const currentConv = conversations.find((c) => c.id === currentId);
 
-  /* ---------------- Load Conversations ---------------- */
-  /* ---------------- Load Conversations (Project Filtered) ---------------- */
-useEffect(() => {
-  if (!user?.uid) return;
+  /* ---------------- Load Projects ---------------- */
+  useEffect(() => {
+    if (!user?.uid) return;
 
-  const uid = user.uid;
+    const uid = user.uid;
+    const projRef = collection(db, "users", uid, "projects");
 
-  // 프로젝트 선택 안했으면 상담 안 보이게
-  if (!currentProjectId) {
-    setConversations([]);
-    return;
-  }
+    const unsubscribe = onSnapshot(projRef, (snap) => {
+      const list = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort(
+          (a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
+        );
 
-  // 특정 프로젝트의 상담만 로드
-  const convRef = query(
-    collection(db, "users", uid, "conversations"),
-    where("projectId", "==", currentProjectId)
-  );
+      setProjects(list);
 
-  const unsubscribe = onSnapshot(convRef, async (snap) => {
-    let list = [];
+      // 프로젝트가 하나도 없을 때 자동 선택 해제
+      if (list.length === 0) {
+        setCurrentProjectId(null);
+        setConversations([]);
+        setCurrentId(null);
+      }
+    });
 
-    for (let c of snap.docs) {
-      const convId = c.id;
-      const data = c.data();
+    return () => unsubscribe();
+  }, [user]);
 
-      const msgSnap = await getDocs(
-        collection(db, "users", uid, "conversations", convId, "messages")
-      );
+  /* ---------------- Load Conversations (by Project) ---------------- */
+  useEffect(() => {
+    if (!user?.uid) return;
 
-      const messages = msgSnap.docs
-        .map((m) => ({ id: m.id, ...m.data() }))
-        .sort((a, b) => {
-          const at = a.createdAt?.seconds || a.clientTime || 0;
-          const bt = b.createdAt?.seconds || b.clientTime || 0;
-          return at - bt;
-        });
+    const uid = user.uid;
 
-      list.push({
-        id: convId,
-        title: data.title || "상담",
-        tone: data.tone || null,
-        projectId: data.projectId || null,
-        createdAt: data.createdAt,
-        messages,
-      });
+    if (!currentProjectId) {
+      setConversations([]);
+      setCurrentId(null);
+      return;
     }
 
-    list.sort(
-      (a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
+    const convRef = query(
+      collection(db, "users", uid, "conversations"),
+      where("projectId", "==", currentProjectId)
     );
 
-    setConversations(list);
-  });
+    const unsubscribe = onSnapshot(convRef, async (snap) => {
+      let list = [];
 
-  return () => unsubscribe();
-}, [user, currentProjectId]);
+      for (let c of snap.docs) {
+        const convId = c.id;
+        const data = c.data();
 
-/* ---------------- Load Projects ---------------- */
-useEffect(() => {
-  if (!user?.uid) return;
+        const msgSnap = await getDocs(
+          collection(db, "users", uid, "conversations", convId, "messages")
+        );
 
-  const uid = user.uid;
-  const projRef = collection(db, "users", uid, "projects");
+        const messages = msgSnap.docs
+          .map((m) => ({ id: m.id, ...m.data() }))
+          .sort((a, b) => {
+            const at = a.createdAt?.seconds || a.clientTime || 0;
+            const bt = b.createdAt?.seconds || b.clientTime || 0;
+            return at - bt;
+          });
 
-  const unsubscribe = onSnapshot(projRef, (snap) => {
-    const list = snap.docs
-      .map((d) => ({ id: d.id, ...d.data() }))
-      .sort(
+        list.push({
+          id: convId,
+          title: data.title || "상담",
+          tone: data.tone || null,
+          projectId: data.projectId || null,
+          systemPrompt: data.systemPrompt || "",
+          createdAt: data.createdAt,
+          messages,
+        });
+      }
+
+      list.sort(
         (a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
       );
 
-    setProjects(list);
-  });
+      setConversations(list);
 
-  return () => unsubscribe();
-}, [user]);
+      // 현재 상담이 없으면 첫 번째 상담 자동 선택
+      if (list.length > 0 && !currentId) {
+        setCurrentId(list[0].id);
+      }
+      if (list.length === 0) {
+        setCurrentId(null);
+      }
+    });
 
-  /* ---------------- Auto Select Conversation ---------------- */
-  useEffect(() => {
-    if (conversations.length === 0) {
-      setCurrentId(null);
-      setToneModal(false);
-      return;
-    }
-
-    if (!currentId) {
-      const first = conversations[0];
-      setCurrentId(first.id);
-      setToneModal(!first.tone);
-      return;
-    }
-
-    const conv = conversations.find((c) => c.id === currentId);
-    if (conv) setToneModal(!conv.tone);
-  }, [conversations, currentId]);
+    return () => unsubscribe();
+    // currentId는 여기서 의존성에 넣지 않음 (불필요한 재실행 방지)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, currentProjectId]);
 
   /* ---------------- Auto Scroll ---------------- */
   useEffect(() => {
@@ -153,49 +156,76 @@ useEffect(() => {
     }
   }, [darkMode]);
 
-  /* ---------------- Create New Conversation ---------------- */
-const addConversation = async () => {
-  const uid = user.uid;
-  const newId = Date.now().toString();
+  /* ---------------- Create New Project ---------------- */
+  const addProject = async () => {
+    const name = window.prompt("프로젝트 이름을 입력해주세요!");
+    if (!name || !name.trim()) return;
 
-  // 선택된 프로젝트의 systemPrompt 불러오기
-  let systemPrompt = "";
-  if (currentProjectId) {
+    const systemPrompt = window.prompt(
+      "이 프로젝트의 기본 프롬프트(톤/지시문)를 입력해주세요.\n(나중에도 수정 가능)"
+    );
+
+    const uid = user.uid;
+    const newId = Date.now().toString();
+
+    await setDoc(doc(db, "users", uid, "projects", newId), {
+      name: name.trim(),
+      systemPrompt: systemPrompt?.trim() || "",
+      createdAt: serverTimestamp(),
+    });
+
+    // 방금 만든 프로젝트로 자동 선택
+    setCurrentProjectId(newId);
+    setConversations([]);
+    setCurrentId(null);
+  };
+
+  /* ---------------- Create New Conversation ---------------- */
+  const addConversation = async () => {
+    if (!currentProjectId) return; // 보호 로직
+
+    const uid = user.uid;
+    const newId = Date.now().toString();
+
+    // 선택된 프로젝트의 systemPrompt 불러오기
+    let systemPrompt = "";
     const projSnap = await getDoc(
       doc(db, "users", uid, "projects", currentProjectId)
     );
     systemPrompt = projSnap.data()?.systemPrompt || "";
-  }
 
-  await setDoc(doc(db, "users", uid, "conversations", newId), {
-  title: "새 상담",
-  tone: null,
-  projectId: currentProjectId,     // ⭐ 어떤 프로젝트의 상담인가
-  systemPrompt,                    // 이전 메시지에서 만들어둔 프롬프트 적용
-  createdAt: serverTimestamp(),
-});
+    await setDoc(doc(db, "users", uid, "conversations", newId), {
+      title: "새 상담",
+      tone: null,
+      projectId: currentProjectId,
+      systemPrompt,
+      createdAt: serverTimestamp(),
+    });
 
+    // 안내용 첫 메시지 (선택사항, UX 좋게)
+    const firstMsgId = (Date.now() + 1).toString();
+    await setDoc(
+      doc(
+        db,
+        "users",
+        uid,
+        "conversations",
+        newId,
+        "messages",
+        firstMsgId
+      ),
+      {
+        sender: "bot",
+        text:
+          "새로운 상담을 시작합니다. 먼저 블로그 작성 톤을 선택해주세요! ✍️",
+        createdAt: serverTimestamp(),
+        clientTime: Date.now() / 1000,
+      }
+    );
 
     setCurrentId(newId);
     setToneModal(true);
   };
-/* ---------------- Create New Project ---------------- */
-const addProject = async () => {
-  const name = window.prompt("프로젝트 이름을 입력해주세요!");
-  if (!name || !name.trim()) return;
-
-  const systemPrompt = window.prompt("이 프로젝트의 기본 프롬프트(톤/지시문)를 입력해주세요.\n(나중에도 수정 가능)");
-
-  const uid = user.uid;
-  const newId = Date.now().toString();
-
-  await setDoc(doc(db, "users", uid, "projects", newId), {
-    name: name.trim(),
-    systemPrompt: systemPrompt?.trim() || "",
-    createdAt: serverTimestamp(),
-  });
-};
-
 
   /* ---------------- Save Message ---------------- */
   const saveMessage = async (convId, sender, text) => {
@@ -214,32 +244,52 @@ const addProject = async () => {
   };
 
   /* ---------------- GPT API ---------------- */
-const buildMessagesForApi = (conv) => {
-  const msgs = conv.messages.map((m) => ({
-    role: m.sender === "user" ? "user" : "assistant",
-    content: m.text,
-  }));
+  const buildMessagesForApi = (conv) => {
+    const msgs = (conv.messages || []).map((m) => ({
+      role: m.sender === "user" ? "user" : "assistant",
+      content: m.text,
+    }));
 
-  // ⭐ 프로젝트/상담의 systemPrompt가 있으면 맨 앞에 삽입
-  if (conv.systemPrompt) {
-    return [
-      { role: "system", content: conv.systemPrompt },
-      ...msgs,
-    ];
-  }
-
-  return msgs;
-};
-
+    if (conv.systemPrompt) {
+      return [{ role: "system", content: conv.systemPrompt }, ...msgs];
+    }
+    return msgs;
+  };
 
   const requestGpt = async (convId, messagesForApi) => {
-  const last = messagesForApi[messagesForApi.length - 1]?.content?.trim();
+    const last = messagesForApi[messagesForApi.length - 1]?.content?.trim();
 
-  // =========================================================
-  // 1) "시작" 입력 → 시작 템플릿 (/api/law/start)
-  // =========================================================
-  if (last === "시작") {
-    const res = await fetch("/api/law/start", {
+    // 1) "시작" 입력 → 시작 템플릿 (/api/law/start)
+    if (last === "시작") {
+      const res = await fetch("/api/law/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: messagesForApi }),
+      });
+
+      const data = await res.json();
+      return data.reply;
+    }
+
+    // 2) 템플릿 3줄 중 하나라도 채워짐 → /api/law/blog
+    const isStartTemplateFilled =
+      /✅키워드:\s*\S+/i.test(last) ||
+      /✅사기내용:\s*\S+/i.test(last) ||
+      /✅구성선택:\s*[1-7]/i.test(last);
+
+    if (isStartTemplateFilled) {
+      const res = await fetch("/api/law/blog", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: messagesForApi }),
+      });
+
+      const data = await res.json();
+      return data.reply;
+    }
+
+    // 3) 나머지 → 일반 GPT (/api/chat)
+    const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messages: messagesForApi }),
@@ -247,77 +297,41 @@ const buildMessagesForApi = (conv) => {
 
     const data = await res.json();
     return data.reply;
-  }
-
-  // =========================================================
-  // 2) 템플릿 3줄 중 하나라도 채워짐 → /api/law/blog
-  // =========================================================
-  const isStartTemplateFilled =
-    /✅키워드:\s*\S+/i.test(last) ||
-    /✅사기내용:\s*\S+/i.test(last) ||
-    /✅구성선택:\s*[1-7]/i.test(last);
-
-  if (isStartTemplateFilled) {
-    const res = await fetch("/api/law/blog", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: messagesForApi }),
-    });
-
-    const data = await res.json();
-    return data.reply;
-  }
-
-  // =========================================================
-  // 3) 나머지 → 일반 GPT (/api/chat)
-  // =========================================================
-  const res = await fetch("/api/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ messages: messagesForApi }),
-  });
-
-  const data = await res.json();
-  return data.reply;
-};
-
+  };
 
   /* ---------------- Send Message ---------------- */
   const sendMessage = async (text) => {
-  if (!text.trim() || !currentConv?.tone || loading) return;
+    if (!text.trim() || !currentConv?.tone || loading) return;
 
-  const convId = currentId;
+    const convId = currentId;
+    const trimmed = text.trim();
 
-  // 1) User 메시지 Firestore 저장
-  await saveMessage(convId, "user", text);
+    // 1) User 메시지 Firestore 저장
+    await saveMessage(convId, "user", trimmed);
 
-  // 2) UI 즉시 반영
-  setConversations(prev =>
-    prev.map(c =>
-      c.id === convId
-        ? {
-            ...c,
-            messages: [
-              ...c.messages,
-              {
-                id: "temp-" + Date.now(),
-                sender: "user",
-                text,
-                createdAt: { seconds: Date.now() / 1000 },
-              },
-            ],
-          }
-        : c
-    )
-  );
+    // 2) UI 즉시 반영
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === convId
+          ? {
+              ...c,
+              messages: [
+                ...(c.messages || []),
+                {
+                  id: "temp-" + Date.now(),
+                  sender: "user",
+                  text: trimmed,
+                  createdAt: { seconds: Date.now() / 1000 },
+                },
+              ],
+            }
+          : c
+      )
+    );
 
-  // -----------------------------------------
-  // ⭐⭐⭐ "시작" 입력 시 즉시 템플릿UI 출력 ⭐⭐⭐
-  // -----------------------------------------
-  if (text.trim() === "시작") {
-    // GPT 호출 안 기다리고 바로 화면에 템플릿 넣기
-    const template = 
-`✅키워드:
+    // "시작" → 템플릿만 바로 출력
+    if (trimmed === "시작") {
+      const template = `✅키워드:
 ✅사기내용:
 ✅구성선택:
   
@@ -329,80 +343,71 @@ const buildMessagesForApi = (conv) => {
 6\\. 웹사이트 검색 기반으로 실제 뉴스와 실제 사례들을 토대로 한 글
 7\\. 실제 피해 사례를 중점으로 한 글`;
 
-    // UI에 즉시 출력
-    setConversations(prev =>
-      prev.map(c =>
-        c.id === convId
-          ? {
-              ...c,
-              messages: [
-                ...c.messages,
-                {
-                  id: "temp-bot-" + Date.now(),
-                  sender: "bot",
-                  text: template,
-                  createdAt: { seconds: Date.now() / 1000 },
-                },
-              ],
-            }
-          : c
-      )
-    );
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === convId
+            ? {
+                ...c,
+                messages: [
+                  ...(c.messages || []),
+                  {
+                    id: "temp-bot-" + Date.now(),
+                    sender: "bot",
+                    text: template,
+                    createdAt: { seconds: Date.now() / 1000 },
+                  },
+                ],
+              }
+            : c
+        )
+      );
 
-    // Firestore에도 저장(중요!)
-    await saveMessage(convId, "bot", template);
+      await saveMessage(convId, "bot", template);
+      setInput("");
+      setLoading(false);
+      return;
+    }
 
-    // 입력창 초기화 + 로딩 제거
-    setInput("");
-    setLoading(false);
+    // 일반 GPT 호출
+    setLoading(true);
 
-    return;
-  }
+    try {
+      const conv = conversations.find((c) => c.id === convId) || currentConv;
+      const tempConv = {
+        ...conv,
+        messages: [...(conv?.messages || []), { sender: "user", text: trimmed }],
+      };
 
-  // -----------------------------------------
-  // ⭐⭐⭐ 그 외에는 기존 로직대로 GPT 호출 ⭐⭐⭐
-  // -----------------------------------------
+      const reply = await requestGpt(convId, buildMessagesForApi(tempConv));
 
-  setLoading(true);
+      await saveMessage(convId, "bot", reply);
 
-  try {
-    const conv = conversations.find((c) => c.id === convId);
-    const tempConv = {
-      ...conv,
-      messages: [...conv.messages, { sender: "user", text }],
-    };
-
-    const reply = await requestGpt(convId, buildMessagesForApi(tempConv));
-
-    // Firestore에 bot 메시지 저장
-    await saveMessage(convId, "bot", reply);
-
-    // UI 반영
-    setConversations(prev =>
-      prev.map(c =>
-        c.id === convId
-          ? {
-              ...c,
-              messages: [
-                ...c.messages,
-                {
-                  id: "temp-bot-" + Date.now(),
-                  sender: "bot",
-                  text: reply,
-                  createdAt: { seconds: Date.now() / 1000 },
-                },
-              ],
-            }
-          : c
-      )
-    );
-  } finally {
-    setLoading(false);
-    setInput("");
-    textareaRef.current.style.height = "auto";
-  }
-};
-
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === convId
+            ? {
+                ...c,
+                messages: [
+                  ...(c.messages || []),
+                  {
+                    id: "temp-bot-" + Date.now(),
+                    sender: "bot",
+                    text: reply,
+                    createdAt: { seconds: Date.now() / 1000 },
+                  },
+                ],
+              }
+            : c
+        )
+      );
+    } finally {
+      setLoading(false);
+      setInput("");
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+      }
+    }
+  };
 
   /* ---------------- Tone Select ---------------- */
   const selectTone = async (toneName) => {
@@ -434,7 +439,6 @@ const buildMessagesForApi = (conv) => {
   /* ---------------- UI ---------------- */
   return (
     <div className="w-screen h-screen flex overflow-hidden relative">
-
       {/* Tone Modal Background */}
       {toneModal && currentConv && (
         <div className="absolute inset-0 backdrop-blur-sm bg-black/20 z-20"></div>
@@ -471,136 +475,128 @@ const buildMessagesForApi = (conv) => {
         }`}
       >
         {/* Sidebar */}
-{/* Sidebar */}
-<aside className="w-64 bg-white dark:bg-neutral-900 border-r dark:border-neutral-700 p-4 flex flex-col justify-between">
-
-  {/* 🔼 상단 전체 영역 */}
-  <div>
-
-    {/* 🌙 다크모드 토글 */}
-    <button
-      onClick={() => setDarkMode(!darkMode)}
-      className="mb-4 w-full bg-indigo-600 text-white px-4 py-2 rounded-lg dark:bg-neutral-700"
-    >
-      {darkMode ? "🌞 라이트 모드" : "🌙 다크 모드"}
-    </button>
-
-    {/* 🧩 프로젝트 섹션 (상담보다 위) */}
-    <div className="mb-6">
-      <div className="flex items-center justify-between mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
-        <span>프로젝트</span>
-
-        <button
-          onClick={addProject}
-          className="text-[11px] px-2 py-1 rounded bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-100"
-        >
-          + 새 프로젝트
-        </button>
-      </div>
-
-      {/* 프로젝트 목록 */}
-      <div className="space-y-2 max-h-[22vh] overflow-y-auto">
-        {projects.length === 0 ? (
-          <p className="text-[11px] text-gray-400 dark:text-gray-500">
-            프로젝트가 없습니다.
-          </p>
-        ) : (
-          projects.map((p) => (
-            <div
-              key={p.id}
-              onClick={() => {
-                setCurrentProjectId(p.id);
-                setConversations([]);
-                setCurrentId(null);
-              }}
-              className={`
-                p-3 rounded-xl cursor-pointer transition border 
-                ${
-                  currentProjectId === p.id
-                    ? "bg-indigo-50 dark:bg-neutral-700 border-indigo-300 dark:border-neutral-500 text-indigo-800 dark:text-white"
-                    : "bg-gray-100 dark:bg-neutral-800 border-transparent text-gray-700 dark:text-gray-300"
-                }
-              `}
+        <aside className="w-64 bg-white dark:bg-neutral-900 border-r dark:border-neutral-700 p-4 flex flex-col justify-between">
+          {/* 상단 */}
+          <div>
+            {/* 다크모드 토글 */}
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              className="mb-4 w-full bg-indigo-600 text-white px-4 py-2 rounded-lg dark:bg-neutral-700"
             >
-              <div className="font-semibold text-sm truncate">{p.name}</div>
-              <div className="text-[10px] opacity-60 mt-1">프로젝트 선택</div>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
+              {darkMode ? "🌞 라이트 모드" : "🌙 다크 모드"}
+            </button>
 
-    {/* 📂 상담 섹션 */}
-    <div>
-      <div className="flex items-center justify-between mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
-        <span>상담</span>
+            {/* 프로젝트 섹션 */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
+                <span>프로젝트</span>
 
-        <button
-          onClick={addConversation}
-          disabled={!currentProjectId}
-          className={`text-[11px] px-2 py-1 rounded 
-            ${
-              currentProjectId
-                ? "bg-indigo-100 text-indigo-700 dark:bg-neutral-700 dark:text-neutral-100"
-                : "bg-gray-200 dark:bg-neutral-800 text-gray-400 cursor-not-allowed"
-            }
-          `}
-        >
-          + 새 상담
-        </button>
-      </div>
-
-      {/* 상담 목록 */}
-      {!currentProjectId ? (
-        <p className="text-[11px] text-gray-400 dark:text-gray-500">
-          프로젝트를 먼저 선택하세요.
-        </p>
-      ) : (
-        <div className="overflow-y-auto space-y-2 max-h-[40vh]">
-          {conversations.map((conv) => (
-            <div
-              key={conv.id}
-              onClick={() => {
-                setCurrentId(conv.id);
-                setToneModal(!conv.tone);
-              }}
-              className={`
-                p-3 rounded-lg cursor-pointer transition 
-                ${
-                  conv.id === currentId
-                    ? "bg-indigo-100 dark:bg-neutral-700 text-indigo-700 dark:text-white"
-                    : "bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-gray-300"
-                }
-              `}
-            >
-              <div className="font-semibold text-sm truncate">
-                {conv.title}
+                <button
+                  onClick={addProject}
+                  className="text-[11px] px-2 py-1 rounded bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-100"
+                >
+                  + 새 프로젝트
+                </button>
               </div>
 
-              {conv.tone && (
-                <div className="text-xs opacity-70 mt-1">톤: {conv.tone}</div>
+              <div className="space-y-2 max-h-[22vh] overflow-y-auto">
+                {projects.length === 0 ? (
+                  <p className="text-[11px] text-gray-400 dark:text-gray-500">
+                    프로젝트가 없습니다.
+                  </p>
+                ) : (
+                  projects.map((p) => (
+                    <div
+                      key={p.id}
+                      onClick={() => {
+                        setCurrentProjectId(p.id);
+                        setConversations([]);
+                        setCurrentId(null);
+                      }}
+                      className={`p-3 rounded-xl cursor-pointer transition border ${
+                        currentProjectId === p.id
+                          ? "bg-indigo-50 dark:bg-neutral-700 border-indigo-300 dark:border-neutral-500 text-indigo-800 dark:text-white"
+                          : "bg-gray-100 dark:bg-neutral-800 border-transparent text-gray-700 dark:text-gray-300"
+                      }`}
+                    >
+                      <div className="font-semibold text-sm truncate">
+                        {p.name}
+                      </div>
+                      <div className="text-[10px] opacity-60 mt-1">
+                        프로젝트 선택
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* 상담 섹션 */}
+            <div>
+              <div className="flex items-center justify-between mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
+                <span>상담</span>
+
+                <button
+                  onClick={addConversation}
+                  disabled={!currentProjectId}
+                  className={`text-[11px] px-2 py-1 rounded ${
+                    currentProjectId
+                      ? "bg-indigo-100 text-indigo-700 dark:bg-neutral-700 dark:text-neutral-100"
+                      : "bg-gray-200 dark:bg-neutral-800 text-gray-400 cursor-not-allowed"
+                  }`}
+                >
+                  + 새 상담
+                </button>
+              </div>
+
+              {!currentProjectId ? (
+                <p className="text-[11px] text-gray-400 dark:text-gray-500">
+                  프로젝트를 먼저 선택하세요.
+                </p>
+              ) : (
+                <div className="overflow-y-auto space-y-2 max-h-[40vh]">
+                  {conversations.map((conv) => (
+                    <div
+                      key={conv.id}
+                      onClick={() => {
+                        setCurrentId(conv.id);
+                        setToneModal(!conv.tone);
+                      }}
+                      className={`p-3 rounded-lg cursor-pointer transition ${
+                        conv.id === currentId
+                          ? "bg-indigo-100 dark:bg-neutral-700 text-indigo-700 dark:text-white"
+                          : "bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-gray-300"
+                      }`}
+                    >
+                      <div className="font-semibold text-sm truncate">
+                        {conv.title}
+                      </div>
+                      {conv.tone && (
+                        <div className="text-xs opacity-70 mt-1">
+                          톤: {conv.tone}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
-          ))}
-        </div>
-      )}
-    </div>
-  </div>
+          </div>
 
-  {/* 🔽 하단 : 이메일 + 로그아웃 */}
-  <div className="mt-6 border-t pt-4 dark:border-neutral-700">
-    <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 break-all">
-      {user?.email}
-    </p>
+          {/* 하단: 이메일 + 로그아웃 */}
+          <div className="mt-6 border-t pt-4 dark:border-neutral-700">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 break-all">
+              {user?.email}
+            </p>
 
-    <button
-      onClick={() => signOut(auth)}
-      className="w-full bg-red-500 text-white px-4 py-2 rounded-lg"
-    >
-      로그아웃
-    </button>
-  </div>
-</aside>
+            <button
+              onClick={() => signOut(auth)}
+              className="w-full bg-red-500 text-white px-4 py-2 rounded-lg"
+            >
+              로그아웃
+            </button>
+          </div>
+        </aside>
 
         {/* Chat Area */}
         {!currentConv ? (
@@ -609,26 +605,42 @@ const buildMessagesForApi = (conv) => {
               아직 상담이 없습니다
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              좌측 상단의 <strong>“+ 새 상담”</strong>을 눌러<br />
-              상담을 시작하세요.
+              좌측에서 <strong>프로젝트</strong>를 선택하고,
+              <br />
+              <strong>“+ 새 상담”</strong>을 눌러 상담을 시작하세요.
             </p>
           </main>
         ) : (
           <main className="flex-1 flex flex-col bg-gray-50 dark:bg-black">
             <header className="p-4 border-b dark:border-neutral-700 bg-white dark:bg-neutral-900">
-              <h1 className="text-xl font-semibold dark:text-white">상담 챗봇</h1>
+              <h1 className="text-xl font-semibold dark:text-white">
+                상담 챗봇
+              </h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {user.email} 님
               </p>
+              {currentProjectId && (
+                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
+                  프로젝트:{" "}
+                  {
+                    projects.find((p) => p.id === currentProjectId)?.name
+                  }
+                </p>
+              )}
             </header>
 
             {/* Messages */}
-            <div ref={chatRef} className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div
+              ref={chatRef}
+              className="flex-1 overflow-y-auto p-6 space-y-4"
+            >
               {(currentConv.messages ?? []).map((msg) => (
                 <div
                   key={msg.id}
                   className={`flex ${
-                    msg.sender === "user" ? "justify-end" : "justify-start"
+                    msg.sender === "user"
+                      ? "justify-end"
+                      : "justify-start"
                   }`}
                 >
                   <div
@@ -639,16 +651,17 @@ const buildMessagesForApi = (conv) => {
                     }`}
                   >
                     <ReactMarkdown
-  remarkPlugins={[remarkGfm]}
-  components={{
-    p: ({ children }) => (
-      <p className="whitespace-pre-line">{children}</p>
-    ),
-  }}
->
-  {msg.text}
-</ReactMarkdown>
-
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        p: ({ children }) => (
+                          <p className="whitespace-pre-line">
+                            {children}
+                          </p>
+                        ),
+                      }}
+                    >
+                      {msg.text}
+                    </ReactMarkdown>
                   </div>
                 </div>
               ))}
@@ -687,25 +700,18 @@ const buildMessagesForApi = (conv) => {
                   }
                 }}
                 onKeyDown={(e) => {
-  if (e.key === "Enter" && !e.shiftKey) {
-    e.preventDefault();
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    const trimmed = input.trim();
+                    if (!trimmed) return;
 
-    const trimmed = input.trim();
-    if (!trimmed) return;
-
-    // 1) ⭐ 엔터 누르는 순간 input 먼저 비우기
-    setInput("");
-
-    // 2) ⭐ textarea 높이 즉시 재설정
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
-
-    // 3) ⭐ 원본 텍스트로 메시지 전송
-    sendMessage(trimmed);
-  }
-}}
-
+                    setInput("");
+                    if (textareaRef.current) {
+                      textareaRef.current.style.height = "auto";
+                    }
+                    sendMessage(trimmed);
+                  }
+                }}
               />
 
               <button
