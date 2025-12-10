@@ -31,49 +31,63 @@ const [currentProjectId, setCurrentProjectId] = useState(null);
   const currentConv = conversations.find((c) => c.id === currentId);
 
   /* ---------------- Load Conversations ---------------- */
-  useEffect(() => {
-    if (!user?.uid) return;
+  /* ---------------- Load Conversations (Project Filtered) ---------------- */
+useEffect(() => {
+  if (!user?.uid) return;
 
-    const uid = user.uid;
-    const convRef = collection(db, "users", uid, "conversations");
+  const uid = user.uid;
 
-    const unsubscribe = onSnapshot(convRef, async (snap) => {
-      let list = [];
+  // 프로젝트 선택 안했으면 상담 안 보이게
+  if (!currentProjectId) {
+    setConversations([]);
+    return;
+  }
 
-      for (let c of snap.docs) {
-        const convId = c.id;
-        const data = c.data();
+  // 특정 프로젝트의 상담만 로드
+  const convRef = query(
+    collection(db, "users", uid, "conversations"),
+    where("projectId", "==", currentProjectId)
+  );
 
-        const msgSnap = await getDocs(
-          collection(db, "users", uid, "conversations", convId, "messages")
-        );
+  const unsubscribe = onSnapshot(convRef, async (snap) => {
+    let list = [];
 
-        const messages = msgSnap.docs
-          .map((m) => ({ id: m.id, ...m.data() }))
-          .sort((a, b) => {
-            const at = a.createdAt?.seconds || a.clientTime || 0;
-            const bt = b.createdAt?.seconds || b.clientTime || 0;
-            return at - bt;
-          });
+    for (let c of snap.docs) {
+      const convId = c.id;
+      const data = c.data();
 
-        list.push({
-          id: convId,
-          title: data.title || "상담",
-          tone: data.tone || null,
-          createdAt: data.createdAt,
-          messages,
-        });
-      }
-
-      list.sort(
-        (a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
+      const msgSnap = await getDocs(
+        collection(db, "users", uid, "conversations", convId, "messages")
       );
 
-      setConversations(list);
-    });
+      const messages = msgSnap.docs
+        .map((m) => ({ id: m.id, ...m.data() }))
+        .sort((a, b) => {
+          const at = a.createdAt?.seconds || a.clientTime || 0;
+          const bt = b.createdAt?.seconds || b.clientTime || 0;
+          return at - bt;
+        });
 
-    return () => unsubscribe();
-  }, [user]);
+      list.push({
+        id: convId,
+        title: data.title || "상담",
+        tone: data.tone || null,
+        projectId: data.projectId || null,
+        createdAt: data.createdAt,
+        messages,
+      });
+    }
+
+    list.sort(
+      (a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
+    );
+
+    setConversations(list);
+  });
+
+  return () => unsubscribe();
+}, [user, currentProjectId]);
+
 /* ---------------- Load Projects ---------------- */
 useEffect(() => {
   if (!user?.uid) return;
@@ -154,12 +168,13 @@ const addConversation = async () => {
   }
 
   await setDoc(doc(db, "users", uid, "conversations", newId), {
-    title: "새 상담",
-    tone: null,
-    systemPrompt,   // ⭐ 프로젝트 시스템 프롬프트 저장
-    projectId: currentProjectId || null, // ⭐ 상담이 어느 프로젝트 소속인지 저장
-    createdAt: serverTimestamp(),
-  });
+  title: "새 상담",
+  tone: null,
+  projectId: currentProjectId,     // ⭐ 어떤 프로젝트의 상담인가
+  systemPrompt,                    // 이전 메시지에서 만들어둔 프롬프트 적용
+  createdAt: serverTimestamp(),
+});
+
 
     setCurrentId(newId);
     setToneModal(true);
@@ -459,7 +474,7 @@ const buildMessagesForApi = (conv) => {
 {/* Sidebar */}
 <aside className="w-64 bg-white dark:bg-neutral-900 border-r dark:border-neutral-700 p-4 flex flex-col justify-between">
 
-  {/* 🔼 상단 : 모드 토글 + 상담 + 프로젝트 */}
+  {/* 🔼 상단 전체 영역 */}
   <div>
 
     {/* 🌙 다크모드 토글 */}
@@ -470,53 +485,11 @@ const buildMessagesForApi = (conv) => {
       {darkMode ? "🌞 라이트 모드" : "🌙 다크 모드"}
     </button>
 
-    {/* 📂 상담 섹션 */}
+    {/* 🧩 프로젝트 섹션 (상담보다 위) */}
     <div className="mb-6">
       <div className="flex items-center justify-between mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
-        <span>상담</span>
-        <button
-          onClick={addConversation}
-          className="text-[11px] px-2 py-1 rounded bg-indigo-100 text-indigo-700 dark:bg-neutral-700 dark:text-neutral-100"
-        >
-          + 새 상담
-        </button>
-      </div>
-
-      <div className="overflow-y-auto space-y-2 max-h-[40vh]">
-        {conversations.map((conv) => (
-          <div
-            key={conv.id}
-            onClick={() => {
-              setCurrentId(conv.id);
-              setToneModal(!conv.tone);
-            }}
-            className={`p-3 rounded-lg cursor-pointer ${
-              conv.id === currentId
-                ? "bg-indigo-100 dark:bg-neutral-700 text-indigo-700 dark:text-white"
-                : "bg-gray-100 dark:bg-neutral-800 dark:text-gray-300"
-            }`}
-          >
-            <div className="font-semibold text-sm truncate">{conv.title}</div>
-
-            {conv.tone && (
-              <div className="text-xs opacity-70 mt-1">톤: {conv.tone}</div>
-            )}
-
-            {/* 프로젝트 이름 표시 */}
-            {conv.projectId && (
-              <div className="text-[10px] opacity-70 mt-1">
-                프로젝트: {projects.find((p) => p.id === conv.projectId)?.name}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-
-    {/* 🧩 프로젝트 섹션 */}
-    <div>
-      <div className="flex items-center justify-between mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
         <span>프로젝트</span>
+
         <button
           onClick={addProject}
           className="text-[11px] px-2 py-1 rounded bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-100"
@@ -525,30 +498,92 @@ const buildMessagesForApi = (conv) => {
         </button>
       </div>
 
-      <div className="space-y-1 max-h-[20vh] overflow-y-auto">
+      {/* 프로젝트 목록 */}
+      <div className="space-y-2 max-h-[22vh] overflow-y-auto">
         {projects.length === 0 ? (
           <p className="text-[11px] text-gray-400 dark:text-gray-500">
-            아직 생성된 프로젝트가 없어요.
+            프로젝트가 없습니다.
           </p>
         ) : (
           projects.map((p) => (
             <div
               key={p.id}
-              onClick={() => setCurrentProjectId(p.id)}
-              className={`px-3 py-2 rounded-lg text-xs cursor-pointer transition ${
-                currentProjectId === p.id
-                  ? "bg-indigo-200 dark:bg-neutral-600 text-indigo-800 dark:text-white"
-                  : "bg-gray-100 dark:bg-neutral-800 dark:text-gray-200"
-              }`}
+              onClick={() => {
+                setCurrentProjectId(p.id);
+                setConversations([]);
+                setCurrentId(null);
+              }}
+              className={`
+                p-3 rounded-xl cursor-pointer transition border 
+                ${
+                  currentProjectId === p.id
+                    ? "bg-indigo-50 dark:bg-neutral-700 border-indigo-300 dark:border-neutral-500 text-indigo-800 dark:text-white"
+                    : "bg-gray-100 dark:bg-neutral-800 border-transparent text-gray-700 dark:text-gray-300"
+                }
+              `}
             >
-              <div className="truncate font-medium">{p.name}</div>
-              <div className="text-[10px] opacity-60">
-                프로젝트 프롬프트 적용됨
-              </div>
+              <div className="font-semibold text-sm truncate">{p.name}</div>
+              <div className="text-[10px] opacity-60 mt-1">프로젝트 선택</div>
             </div>
           ))
         )}
       </div>
+    </div>
+
+    {/* 📂 상담 섹션 */}
+    <div>
+      <div className="flex items-center justify-between mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
+        <span>상담</span>
+
+        <button
+          onClick={addConversation}
+          disabled={!currentProjectId}
+          className={`text-[11px] px-2 py-1 rounded 
+            ${
+              currentProjectId
+                ? "bg-indigo-100 text-indigo-700 dark:bg-neutral-700 dark:text-neutral-100"
+                : "bg-gray-200 dark:bg-neutral-800 text-gray-400 cursor-not-allowed"
+            }
+          `}
+        >
+          + 새 상담
+        </button>
+      </div>
+
+      {/* 상담 목록 */}
+      {!currentProjectId ? (
+        <p className="text-[11px] text-gray-400 dark:text-gray-500">
+          프로젝트를 먼저 선택하세요.
+        </p>
+      ) : (
+        <div className="overflow-y-auto space-y-2 max-h-[40vh]">
+          {conversations.map((conv) => (
+            <div
+              key={conv.id}
+              onClick={() => {
+                setCurrentId(conv.id);
+                setToneModal(!conv.tone);
+              }}
+              className={`
+                p-3 rounded-lg cursor-pointer transition 
+                ${
+                  conv.id === currentId
+                    ? "bg-indigo-100 dark:bg-neutral-700 text-indigo-700 dark:text-white"
+                    : "bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-gray-300"
+                }
+              `}
+            >
+              <div className="font-semibold text-sm truncate">
+                {conv.title}
+              </div>
+
+              {conv.tone && (
+                <div className="text-xs opacity-70 mt-1">톤: {conv.tone}</div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   </div>
 
