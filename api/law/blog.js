@@ -1,7 +1,7 @@
 // /api/law/blog.js
 import OpenAI from "openai";
 
-export const config = { runtime: "Node.js" };
+export const config = { runtime: "Nodejs" };
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
