@@ -1,21 +1,32 @@
 // /api/law/blog.js
 import OpenAI from "openai";
+import fs from "fs";
+import path from "path";
 
 /* ------------------------------------------------------------------
    Node.js Runtime 설정 (Edge → Node로 전환)
 ------------------------------------------------------------------ */
 export const config = {
-  runtime: "nodejs", // ★ Node 환경에서 실행되도록 강제
+  runtime: "nodejs", // ★ 반드시 Node 환경에서 실행되도록 설정
 };
 
 /* ------------------------------------------------------------------
-   JSON Response Helper
+   텍스트 파일 로드 함수
 ------------------------------------------------------------------ */
-const json = (data, status = 200) =>
-  new Response(JSON.stringify(data), {
-    status,
-    headers: { "Content-Type": "application/json; charset=utf-8" },
-  });
+const loadTxt = (filename) => {
+  const filePath = path.join(process.cwd(), "src", "txt", filename);
+  return fs.readFileSync(filePath, "utf8");
+};
+
+// txt 파일 읽기
+const txt1 = loadTxt("1.txt");
+const txt2 = loadTxt("2.txt");
+const txt3 = loadTxt("3.txt");
+const txt4 = loadTxt("4.txt");
+const txt5 = loadTxt("5.txt");
+const txt6 = loadTxt("6.txt");
+const txt7 = loadTxt("7.txt");
+const txt8 = loadTxt("8.txt");
 
 /* ------------------------------------------------------------------
    OpenAI Client
@@ -25,22 +36,7 @@ const client = new OpenAI({
 });
 
 /* ------------------------------------------------------------------
-   초대형 txt 파일 내용 (Edge 미지원 → Node에서는 안전하게 사용 가능)
------------------------------------------------------------------- */
-import txt1 from "../../src/txt/1.txt";
-import txt2 from "../../src/txt/2.txt";
-import txt3 from "../../src/txt/3.txt";
-import txt4 from "../../src/txt/4.txt";
-import txt5 from "../../src/txt/5.txt";
-import txt6 from "../../src/txt/6.txt";
-import txt7 from "../../src/txt/7.txt";
-import txt8 from "../../src/txt/8.txt";
-
-// ※ 그대로 내부 문자열로 쓰고 싶다면 import 없이 유지해도 됨
-// Node에서는 메모리 문제 없음
-
-/* ------------------------------------------------------------------
-   SYSTEM PROMPT 빌더
+   SYSTEM PROMPT 생성
 ------------------------------------------------------------------ */
 const buildSystemPrompt = (category) => {
   const 사건유형 = category || "일반";
@@ -76,11 +72,11 @@ const buildSystemPrompt = (category) => {
 [본문 규칙]
 - 최소 2,000자
 - 키워드 4~5회 자연스럽게 반복
-- 사기 구조 · 진행·수법 · 법적 평가 · 피해 후 대응 포함
+- 사기 구조 · 진행 단계 · 수법 · 법적 평가 · 대응 포함
 
 [금지]
 - 특정 플랫폼을 단정적으로 사기라고 명시 금지
-- 케이프pes, szagold, koaso 등 문장 금지
+- 케이프pes, szagold, koaso 등 문장 사용 금지
 
 [참고 지식 — 내부 가이드]
 ${txt2}
@@ -96,27 +92,28 @@ ${txt8}
 };
 
 /* ------------------------------------------------------------------
-   MAIN HANDLER (POST only)
+   MAIN HANDLER
+   (Vercel Node.js API Route — req, res 사용)
 ------------------------------------------------------------------ */
-export default async function handler(req) {
-  if (!process.env.OPENAI_API_KEY) {
-    return json({ error: "OPENAI_API_KEY가 없습니다." }, 500);
+export default async function handler(req, res) {
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "POST 메서드만 허용됩니다." });
   }
 
-  if (req.method !== "POST") {
-    return json({ error: "POST 메서드만 허용됩니다." }, 405);
+  if (!process.env.OPENAI_API_KEY) {
+    return res.status(500).json({ error: "OPENAI_API_KEY가 없습니다." });
   }
 
   let body;
   try {
-    body = await req.json();
+    body = req.body; // Vercel은 자동 JSON 파싱됨
   } catch {
-    return json({ error: "JSON 파싱 오류" }, 400);
+    return res.status(400).json({ error: "JSON 파싱 오류" });
   }
 
   const { messages, category } = body || {};
-  if (!messages || !Array.isArray(messages) || messages.length === 0) {
-    return json({ error: "messages 배열이 필요합니다." }, 400);
+  if (!messages || !Array.isArray(messages)) {
+    return res.status(400).json({ error: "messages 배열이 필요합니다." });
   }
 
   try {
@@ -134,15 +131,12 @@ export default async function handler(req) {
 
     const reply = completion.choices?.[0]?.message?.content || "";
 
-    return json({ reply });
+    return res.status(200).json({ reply });
   } catch (err) {
-    console.error("🔥 Node.js /api/law/blog error:", err);
-    return json(
-      {
-        error: "서버 오류 발생",
-        detail: err?.message,
-      },
-      500
-    );
+    console.error("🔥 /api/law/blog 에러:", err);
+    return res.status(500).json({
+      error: "블로그 생성 중 서버 오류가 발생했습니다.",
+      detail: err?.message,
+    });
   }
 }
