@@ -806,7 +806,7 @@ export default function ChatPage({ user }) {
   }}
 >
   <img
-    src={1}
+    src={img1}
     alt="프로젝트"
     className="w-4 h-4 shrink-0"
   />
