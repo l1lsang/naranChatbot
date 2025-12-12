@@ -452,6 +452,10 @@ export default function ChatPage({ user }) {
 
   const requestGpt = async (convId, messagesForApi) => {
     const last = messagesForApi[messagesForApi.length - 1]?.content?.trim();
+      const isStartTemplateFilled =
+    /✅키워드:\s*\S+/i.test(last) ||
+    /✅사기내용:\s*\S+/i.test(last) ||
+    /✅구성선택:\s*[1-7]/i.test(last);
 
     // 1) "시작" → 템플릿 (/api/law/start)
     if (last === "시작") {
