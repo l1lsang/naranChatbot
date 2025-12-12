@@ -729,7 +729,7 @@ export default function ChatPage({ user }) {
   "
 >
   <img
-    src={darkMode ? {sun} : {moon}}
+    src={darkMode ? sun : moon}
     alt={darkMode ? "라이트 모드" : "다크 모드"}
     className="w-5 h-5"
   />
