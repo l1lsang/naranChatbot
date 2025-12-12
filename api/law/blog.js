@@ -89,17 +89,23 @@ const isValidOutput = (json) => {
 ========================================================= */
 const requestGPT = async (messages, category) => {
   const res = await openai.chat.completions.create({
-    model: "gpt-5.1-2025-11-13",
+    // ⚠️ 프로젝트에서 실제 접근 가능한 모델로
+    model: "gpt-5.1",
+
     temperature: 0.3,
-    max_tokens: 4096,
+
+    // ❌ max_tokens → ✅ max_completion_tokens
+    max_completion_tokens: 4096,
+
     messages: [
       { role: "system", content: buildSystemPrompt(category) },
       ...messages,
     ],
   });
 
-  return res.choices?.[0]?.message?.content;
+  return res.choices?.[0]?.message?.content ?? "";
 };
+
 
 /* =========================================================
    8. Handler
