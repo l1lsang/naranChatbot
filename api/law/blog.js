@@ -89,7 +89,7 @@ const isValidOutput = (json) => {
 ========================================================= */
 const requestGPT = async (messages, category) => {
   const res = await openai.chat.completions.create({
-    model: "gpt-5.1",
+    model: "gpt-5.1-2025-11-13",
     temperature: 0.3,
     max_tokens: 4096,
     messages: [
