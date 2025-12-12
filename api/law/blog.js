@@ -84,7 +84,6 @@ const buildSystemPrompt = (category) => {
 # 금지 규칙
 - 특정 플랫폼을 단정적으로 “사기”라고 하지 말 것  
 - "케이프pes·szagold·koaso…" 문자열 포함 금지  
-- 참고 YAML을 직접 출력하지 않음
 
 # 참고 지식 (내부 참조용)
 절대 복붙 금지, 자연스럽게 재작성할 것.
