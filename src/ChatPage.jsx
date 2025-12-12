@@ -17,6 +17,12 @@ import {
   query,
   where,
 } from "firebase/firestore";
+import img1 from "../src/img/1.png";
+import moon from "../src/img/moon.png";
+import sun from "../src/img/sun.png";
+import p from "../src/img/p.png";
+import book from "../src/img/book.png";
+
 
 /* ---------------------------------------------------------
    ■ 프로젝트 편집 모달
@@ -710,19 +716,28 @@ export default function ChatPage({ user }) {
   ">
     {/* 🌙 다크모드 버튼 */}
     <button
-      onClick={() => setDarkMode(!darkMode)}
-      className="
-        mb-4 w-full px-4 py-2 rounded-lg
+  onClick={() => setDarkMode(!darkMode)}
+  className="
+    mb-4 w-full px-4 py-2 rounded-lg
+    flex items-center justify-center gap-2
 
-        bg-[#e5e7eb] text-[#111] 
-        hover:bg-[#dcdfe3]
+    bg-[#e5e7eb] text-[#111]
+    hover:bg-[#dcdfe3]
 
-        dark:bg-[#2a2a2a] dark:text-gray-200 
-        dark:hover:bg-[#333]
-      "
-    >
-      {darkMode ? "🌞 라이트 모드" : "🌙 다크 모드"}
-    </button>
+    dark:bg-[#2a2a2a] dark:text-gray-200
+    dark:hover:bg-[#333]
+  "
+>
+  <img
+    src={darkMode ? {sun} : {moon}}
+    alt={darkMode ? "라이트 모드" : "다크 모드"}
+    className="w-5 h-5"
+  />
+  <span>
+    {darkMode ? "라이트 모드" : "다크 모드"}
+  </span>
+</button>
+
 
     {/* 🔧 프로젝트 섹션 */}
     <div>
@@ -743,26 +758,33 @@ export default function ChatPage({ user }) {
       </div>
 
       {/* 전체 상담 버튼 */}
-      <button
-        onClick={() => setCurrentProjectId(null)}
-        className={`
-          w-full text-left text-xs px-3 py-2 mb-1 rounded-lg border transition
-          ${
-            currentProjectId === null
-              ? `
-                bg-[#e5e7eb] border-[#cbd5e1] text-[#111]
-                dark:bg-[#2a2a2a] dark:border-[#555] dark:text-white
-              `
-              : `
-                bg-[#ffffff] border-[#e5e7eb] text-gray-600 hover:bg-[#f3f3f3]
-                dark:bg-[#1a1a1a] dark:border-[#2f2f2f] dark:text-gray-300 
-                dark:hover:bg-[#222]
-              `
-          }
-        `}
-      >
-        📚 전체 상담 보기
-      </button>
+<button
+  onClick={() => setCurrentProjectId(null)}
+  className={`
+    w-full text-left text-xs px-3 py-2 mb-1 rounded-lg border transition
+    flex items-center gap-2
+    ${
+      currentProjectId === null
+        ? `
+          bg-[#e5e7eb] border-[#cbd5e1] text-[#111]
+          dark:bg-[#2a2a2a] dark:border-[#555] dark:text-white
+        `
+        : `
+          bg-[#ffffff] border-[#e5e7eb] text-gray-600 hover:bg-[#f3f3f3]
+          dark:bg-[#1a1a1a] dark:border-[#2f2f2f] dark:text-gray-300
+          dark:hover:bg-[#222]
+        `
+    }
+  `}
+>
+  <img
+    src={book}
+    alt="전체 상담 보기"
+    className="w-4 h-4 shrink-0"
+  />
+  <span>전체 상담 보기</span>
+</button>
+
 
       {/* 프로젝트 목록 */}
       <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1 mt-1">
@@ -772,20 +794,27 @@ export default function ChatPage({ user }) {
 
           return (
             <div key={p.id} className="group relative">
-              <button
-                onClick={() => setCurrentProjectId(p.id)}
-                className="
-                  w-full flex items-center gap-2 p-3 rounded-lg border transition text-left
-                  bg-[#ffffff] text-[#111] hover:bg-[#f3f3f3]
-                  dark:bg-[#1a1a1a] dark:text-gray-300 dark:hover:bg-[#222]
-                "
-                style={{
-                  borderColor: selected ? color : "transparent",
-                }}
-              >
-                <span className="text-lg">📁</span>
-                <span className="font-semibold text-sm truncate">{p.name}</span>
-              </button>
+           <button
+  onClick={() => setCurrentProjectId(p.id)}
+  className="
+    w-full flex items-center gap-2 p-3 rounded-lg border transition text-left
+    bg-[#ffffff] text-[#111] hover:bg-[#f3f3f3]
+    dark:bg-[#1a1a1a] dark:text-gray-300 dark:hover:bg-[#222]
+  "
+  style={{
+    borderColor: selected ? color : "transparent",
+  }}
+>
+  <img
+    src={1}
+    alt="프로젝트"
+    className="w-4 h-4 shrink-0"
+  />
+  <span className="font-semibold text-sm truncate">
+    {p.name}
+  </span>
+</button>
+
 
               {/* 수정/삭제 버튼 */}
               <div className="
@@ -895,18 +924,39 @@ export default function ChatPage({ user }) {
     </div>
 
     {/* 계정 */}
-    <div className="mt-6 border-t pt-4 border-[#e5e7eb] dark:border-[#2a2a2a]">
-      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 break-all">
-        {user?.email}
-      </p>
-
-      <button
-        onClick={() => signOut(auth)}
-        className="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg"
-      >
-        로그아웃
-      </button>
+ <div className="mt-6 border-t pt-4 border-[#e5e7eb] dark:border-[#2a2a2a]">
+  {/* 프로필 영역 */}
+  <div className="flex items-center gap-3 mb-4">
+    <div className="
+      w-9 h-9 rounded-full flex items-center justify-center
+      bg-[#e5e7eb] text-[#111]
+      dark:bg-[#2a2a2a] dark:text-gray-200
+    ">
+      <img
+        src={p}
+        alt="프로필"
+        className="w-5 h-5"
+      />
     </div>
+
+    <p className="text-xs text-gray-500 dark:text-gray-400 break-all">
+      {user?.email}
+    </p>
+  </div>
+
+  {/* 로그아웃 버튼 */}
+  <button
+    onClick={() => signOut(auth)}
+    className="
+      w-full bg-red-600 hover:bg-red-700
+      text-white px-4 py-2 rounded-lg
+      transition
+    "
+  >
+    로그아웃
+  </button>
+</div>
+
   </div>
 </aside>
 
