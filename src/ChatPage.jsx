@@ -465,20 +465,32 @@ export default function ChatPage({ user }) {
     }
 
     // 2) 템플릿 일부 채워짐 → /api/law/blog
-    const isStartTemplateFilled =
-      /✅키워드:\s*\S+/i.test(last) ||
-      /✅사기내용:\s*\S+/i.test(last) ||
-      /✅구성선택:\s*[1-7]/i.test(last);
-
     if (isStartTemplateFilled) {
-      const res = await fetch("/api/law/blog", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: messagesForApi }),
-      });
-      const data = await res.json();
-      return data.reply;
-    }
+  const res = await fetch("/api/law/blog", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages: messagesForApi }),
+  });
+
+  const data = await res.json();
+
+  // 🔧 JSON → Markdown 재조립
+  const markdown = `
+# ${data.title}
+
+${data.intro}
+
+${data.body}
+
+## 결론
+${data.conclusion}
+
+${data.summary_table}
+`;
+
+  return markdown;
+}
+
 
     // 3) 일반 대화 → /api/chat
     const res = await fetch("/api/chat", {
