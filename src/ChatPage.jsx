@@ -461,7 +461,7 @@ const addChatConversation = async () => {
   await setDoc(doc(db, "users", uid, "conversations", newId), {
     title: "법률 상담",
     type: "chat",          // ⭐ 핵심
-    projectId: null,
+    projectId: currentProjectId || null,
     tone: null,            // ❌ 사용 안 함
     systemPrompt: "",      // ❌ 사용 안 함
     createdAt: serverTimestamp(),
