@@ -10,14 +10,12 @@ export default function TypingText({ text, onComplete, size = "lg" }) {
 
   return (
     <motion.div
-      className={`
-        relative z-20
-        font-semibold leading-relaxed
-        select-none
-      `}
+      key={text} // ⭐ 이거 중요 (재마운트 → 애니메이션 재실행)
+      className="relative z-20 font-semibold leading-relaxed select-none"
       initial="hidden"
       animate="visible"
       variants={{
+        hidden: {}, // ⭐ 반드시 필요
         visible: {
           transition: { staggerChildren: 0.04 },
         },
