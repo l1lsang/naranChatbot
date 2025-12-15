@@ -198,21 +198,6 @@ export default function ChatPage({ user,goAdmin }) {
     textareaRef.current.style.height = "auto";
   };
 
-  /* ---------------- ROLE ---------------- */
-  useEffect(() => {
-    if (!user?.uid) return;
-    (async () => {
-      try {
-        const snap = await getDoc(doc(db, "users", user.uid));
-        setUserRole(snap.exists() ? snap.data()?.role || "pending" : "pending");
-      } catch {
-        setUserRole("pending");
-      } finally {
-        setLoadingRole(false);
-      }
-    })();
-  }, [user?.uid]);
-
   /* ---------------- Dark Mode ---------------- */
   useEffect(() => {
     const saved = localStorage.getItem("theme");
@@ -234,7 +219,8 @@ export default function ChatPage({ user,goAdmin }) {
 
   /* ---------------- Projects ---------------- */
   useEffect(() => {
-    if (!user?.uid || userRole !== "active") return;
+    if (!user?.uid) return;
+
     const unsub = onSnapshot(
       collection(db, "users", user.uid, "projects"),
       (snap) => {
@@ -248,11 +234,12 @@ export default function ChatPage({ user,goAdmin }) {
       }
     );
     return () => unsub();
-  }, [user?.uid, userRole]);
+  }, [user?.uid]);
 
   /* ---------------- Conversations (메타만) ---------------- */
   useEffect(() => {
-    if (!user?.uid || userRole !== "active") return;
+    if (!user?.uid) return;
+
 
     const base = collection(db, "users", user.uid, "conversations");
     const ref = currentProjectId
@@ -272,7 +259,7 @@ export default function ChatPage({ user,goAdmin }) {
     });
 
     return () => unsub();
-  }, [user?.uid, userRole, currentProjectId, currentId]);
+  }, [user?.uid, currentProjectId, currentId]);
 
   /* ---------------- Messages (선택된 상담만!) ---------------- */
   useEffect(() => {
@@ -297,10 +284,11 @@ export default function ChatPage({ user,goAdmin }) {
 
   /* ---------------- Auto create conversation ---------------- */
   useEffect(() => {
-    if (!user?.uid || userRole !== "active") return;
+   if (!user?.uid) return;
+
     if (conversations.length === 0 && !currentId) addConversation();
     // eslint-disable-next-line
-  }, [user?.uid, userRole, conversations.length]);
+  }, [user?.uid, conversations.length]);
 
   /* ---------------- CRUD ---------------- */
   const addProject = async () => {
@@ -559,61 +547,34 @@ const filteredConversations = useMemo(() => {
   };
 
   /* ---------------- Gate ---------------- */
- /* ===============================
-   ⏳ 권한 / 전역 상태 로딩
-   =============================== */
-if (loadingRole || globalEnabled === null) {
+if (globalEnabled === null) {
   return (
     <div className="w-screen h-screen flex items-center justify-center text-gray-500">
-      권한 확인 중…
+      상태 확인 중…
     </div>
   );
 }
 
-/* ===============================
-   👑 관리자 → 무조건 통과
-   =============================== */
-if (userRole === "admin") {
-  // 아무 것도 하지 않고 아래 정상 화면으로 진행
+// (선택) 전역 차단일 때만 표시 — 관리자는 App에서 이미 통과했으니 여기 도달 안 함
+if (globalEnabled === false) {
+  return (
+    <div className="w-screen h-screen flex items-center justify-center text-center">
+      <div>
+        <h2 className="text-xl font-bold mb-2">⛔ 접근 제한</h2>
+        <p className="mb-4 text-gray-600">
+          현재 서비스가 비활성화되어 있습니다.
+        </p>
+        <button
+          onClick={() => signOut(auth)}
+          className="bg-red-600 text-white px-4 py-2 rounded-lg"
+        >
+          로그아웃
+        </button>
+      </div>
+    </div>
+  );
 }
 
-/* ===============================
-   🚫 일반 사용자 차단
-   =============================== */
-else {
-  // 계정 비활성
-  if (userRole !== "active") {
-    return (
-      <div className="w-screen h-screen flex items-center justify-center">
-        <button onClick={() => signOut(auth)}>로그아웃</button>
-      </div>
-    );
-  }
-
-  // 전역 차단
-  if (globalEnabled === false) {
-    return (
-      <div className="w-screen h-screen flex items-center justify-center text-center">
-        <div>
-          <h2 className="text-xl font-bold mb-2">⛔ 접근 제한</h2>
-          <p className="mb-4 text-gray-600">
-            현재 서비스가 비활성화되어 있습니다.
-          </p>
-          <button
-            onClick={() => signOut(auth)}
-            className="bg-red-600 text-white px-4 py-2 rounded-lg"
-          >
-            로그아웃
-          </button>
-        </div>
-      </div>
-    );
-  }
-}
-
-/* ===============================
-   ✅ 여기까지 오면 정상 접근
-   =============================== */
 // ↓↓↓ ChatPage / AdminPage 렌더링 계속
 
 
