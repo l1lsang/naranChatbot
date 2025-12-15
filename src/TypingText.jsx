@@ -5,11 +5,12 @@ export default function TypingText({ text, onComplete, size = "lg" }) {
 console.log("🔥 TypingText rendered");
 
 const sizeClass =
-  size === "xl"
-    ? "text-[clamp(2.5rem,6vw,4rem)]"
-    : size === "sm"
-    ? "text-[clamp(1rem,3vw,1.25rem)]"
-    : "text-[clamp(1.25rem,4vw,1.75rem)]";
+  size === "sm"
+    ? "text-base md:text-lg"
+    : size === "xl"
+    ? "text-4xl md:text-5xl lg:text-6xl"
+    : "text-xl md:text-2xl";
+
 
 
 
