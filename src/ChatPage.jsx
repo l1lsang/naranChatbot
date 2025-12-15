@@ -788,10 +788,12 @@ const template =
                   }`}
                 >
                   <ReactMarkdown
-  remarkPlugins={[remarkGfm, remarkBreaks]} className="markdown-body"
+  remarkPlugins={[remarkGfm, remarkBreaks]}
+  className="chat-markdown"
 >
   {m.text}
 </ReactMarkdown>
+
                 </div>
               </div>
             ))}
