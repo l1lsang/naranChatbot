@@ -44,61 +44,84 @@ export default function Login() {
         <AnimatePresence>
           {!success && (
             <motion.div
-              key="login-card"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ delay: 3, duration: 0.6 }}
-              className="
-                bg-white/90 dark:bg-neutral-900/90
-                backdrop-blur-xl
-                p-8 rounded-2xl shadow-xl w-80
-              "
-            >
-              <h2 className="text-lg font-semibold mb-4 dark:text-white text-center">
-                {mode === "login" ? "Welcome Back" : "Create Account"}
-              </h2>
+  key="login-card"
+  initial={{ opacity: 0, scale: 0.95 }}
+  animate={{ opacity: 1, scale: 1 }}
+  exit={{ opacity: 0, scale: 0.9 }}
+  transition={{ delay: 3, duration: 0.6 }}
+  className="
+    relative
+    p-[1px] rounded-2xl
+    bg-gradient-to-br
+    from-sky-400/60 via-indigo-400/40 to-pink-400/60
+    shadow-xl
+  "
+>
+  {/* 실제 카드 */}
+  <div
+    className="
+      bg-white/90 dark:bg-neutral-900/90
+      backdrop-blur-xl
+      p-8 rounded-2xl w-80
+    "
+  >
+    <h2 className="text-lg font-semibold mb-4 dark:text-white text-center">
+      {mode === 'login' ? 'Welcome Back' : 'Create Account'}
+    </h2>
 
-              <form onSubmit={handleAuth}>
-                <input
-                  type="email"
-                  placeholder="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full p-2 border rounded mb-3 dark:bg-neutral-800 dark:text-white"
-                />
+    <form onSubmit={handleAuth}>
+      <input
+        type="email"
+        placeholder="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        className="
+          w-full p-2 border rounded mb-3
+          focus:ring-2 focus:ring-sky-400/50
+          dark:bg-neutral-800 dark:text-white
+        "
+      />
 
-                <input
-                  type="password"
-                  placeholder="Password"
-                  value={pw}
-                  onChange={(e) => setPw(e.target.value)}
-                  className="w-full p-2 border rounded mb-3 dark:bg-neutral-800 dark:text-white"
-                />
+      <input
+        type="password"
+        placeholder="Password"
+        value={pw}
+        onChange={(e) => setPw(e.target.value)}
+        className="
+          w-full p-2 border rounded mb-3
+          focus:ring-2 focus:ring-pink-400/40
+          dark:bg-neutral-800 dark:text-white
+        "
+      />
 
-                {error && (
-                  <p className="text-red-500 text-sm mb-2 text-center">
-                    {error}
-                  </p>
-                )}
+      {error && (
+        <p className="text-red-500 text-sm mb-2 text-center">{error}</p>
+      )}
 
-                <button
-                  type="submit"
-                  className="w-full bg-indigo-600 text-white p-2 rounded mb-3 hover:bg-indigo-700 transition"
-                >
-                  {mode === "login" ? "로그인" : "회원가입"}
-                </button>
-              </form>
+      <button
+        type="submit"
+        className="
+          w-full p-2 rounded mb-3 text-white
+          bg-gradient-to-r from-sky-500 to-pink-500
+          hover:from-sky-600 hover:to-pink-600
+          transition
+        "
+      >
+        {mode === 'login' ? '로그인' : '회원가입'}
+      </button>
+    </form>
 
-              <p
-                onClick={() => setMode(mode === "login" ? "signup" : "login")}
-                className="text-sm text-indigo-600 cursor-pointer text-center dark:text-indigo-400"
-              >
-                {mode === "login"
-                  ? "회원가입하기"
-                  : "이미 계정이 있으신가요? 로그인"}
-              </p>
-            </motion.div>
+    <p
+      onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
+      className="text-sm cursor-pointer text-center text-sky-600 dark:text-sky-400"
+    >
+      {mode === 'login'
+        ? '회원가입하기'
+        : '이미 계정이 있으신가요? 로그인'}
+    </p>
+  </div>
+</motion.div>
+
           )}
         </AnimatePresence>
       </div>
