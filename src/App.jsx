@@ -63,7 +63,7 @@ export default function App() {
       (snap) => {
         // ✅ globalEnabled 필드로 통일
         setGlobalEnabled(
-          snap.exists() ? snap.data()?.globalEnabled ?? true : true
+          snap.exists() ? snap.data()?.enabled ?? true : true
         );
         setLoadingGlobal(false);
       },
