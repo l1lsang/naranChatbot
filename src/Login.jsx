@@ -1,17 +1,20 @@
 import { useState } from "react";
 import { auth } from "./firebase";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+} from "firebase/auth";
+import { motion } from "framer-motion";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
-  const [mode, setMode] = useState("login"); // login or signup
+  const [mode, setMode] = useState("login");
   const [error, setError] = useState("");
 
   const handleAuth = async () => {
     try {
       setError("");
-
       if (mode === "login") {
         await signInWithEmailAndPassword(auth, email, pw);
       } else {
@@ -23,16 +26,45 @@ export default function Login() {
   };
 
   return (
-    <div className="w-screen h-screen flex items-center justify-center bg-gray-100 dark:bg-black">
+    <div className="w-screen h-screen flex items-center justify-center bg-gray-100 dark:bg-black overflow-hidden">
+      {/* 배경 텍스트 영역 */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <motion.h1
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1.2, ease: "easeOut" }}
+          className="
+            text-[3rem] md:text-[4.5rem] lg:text-[6rem]
+            font-extrabold tracking-tight text-center
+            text-gray-200 dark:text-neutral-800
+            select-none
+          "
+        >
+          Here,<br />
+          Ever Reliable<br />
+          & Open
+        </motion.h1>
+      </div>
 
-      <div className="bg-white dark:bg-neutral-900 p-8 rounded-xl shadow-lg w-80">
-        <h1 className="text-xl font-semibold mb-4 dark:text-white">
-          {mode === "login" ? "로그인" : "회원가입"}
-        </h1>
+      {/* 로그인 카드 */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.6, duration: 0.6 }}
+        className="
+          relative z-10
+          bg-white/90 dark:bg-neutral-900/90
+          backdrop-blur-xl
+          p-8 rounded-2xl shadow-xl w-80
+        "
+      >
+        <h2 className="text-lg font-semibold mb-4 dark:text-white text-center">
+          {mode === "login" ? "Welcome Back" : "Create Account"}
+        </h2>
 
         <input
           type="email"
-          placeholder="이메일"
+          placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="w-full p-2 border rounded mb-3 dark:bg-neutral-800 dark:text-white"
@@ -40,30 +72,32 @@ export default function Login() {
 
         <input
           type="password"
-          placeholder="비밀번호"
+          placeholder="Password"
           value={pw}
           onChange={(e) => setPw(e.target.value)}
           className="w-full p-2 border rounded mb-3 dark:bg-neutral-800 dark:text-white"
         />
 
-        {error && <p className="text-red-500 text-sm mb-2">{error}</p>}
+        {error && (
+          <p className="text-red-500 text-sm mb-2 text-center">{error}</p>
+        )}
 
         <button
           onClick={handleAuth}
-          className="w-full bg-indigo-600 text-white p-2 rounded mb-3 hover:bg-indigo-700"
+          className="w-full bg-indigo-600 text-white p-2 rounded mb-3 hover:bg-indigo-700 transition"
         >
           {mode === "login" ? "로그인" : "회원가입"}
         </button>
 
         <p
           onClick={() => setMode(mode === "login" ? "signup" : "login")}
-          className="text-sm text-indigo-600 cursor-pointer dark:text-indigo-400"
+          className="text-sm text-indigo-600 cursor-pointer text-center dark:text-indigo-400"
         >
           {mode === "login"
             ? "회원가입하기"
             : "이미 계정이 있으신가요? 로그인"}
         </p>
-      </div>
+      </motion.div>
     </div>
   );
 }
