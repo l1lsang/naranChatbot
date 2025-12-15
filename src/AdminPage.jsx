@@ -31,7 +31,8 @@ export default function AdminPage() {
   useEffect(() => {
     if (!isAdmin) return;
 
-    const ref = doc(db, "admin", "system", "globalAccess");
+    const ref = doc(db, "admin", "system", "globalAccess", "config");
+
 
     return onSnapshot(ref, async (snap) => {
       if (!snap.exists()) {
@@ -67,7 +68,8 @@ export default function AdminPage() {
 
   // 🔘 스위치 토글
   const toggle = async () => {
-    const ref = doc(db, "admin", "system", "globalAccess");
+    const ref = doc(db, "admin", "system", "globalAccess", "config");
+
     await updateDoc(ref, {
       enabled: !enabled,
       updatedAt: serverTimestamp(),

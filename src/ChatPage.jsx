@@ -144,7 +144,8 @@ export default function ChatPage({ user }) {
 
   // 🌍 전역 접근 상태 구독
   useEffect(() => {
-    const ref = doc(db, "admin", "system", "globalAccess");
+    const ref = doc(db, "admin", "system", "globalAccess", "config");
+
     return onSnapshot(ref, (snap) => {
       setGlobalEnabled(snap.data()?.enabled ?? false);
     });
