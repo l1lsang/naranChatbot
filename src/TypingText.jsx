@@ -4,10 +4,13 @@ export default function TypingText({ text, onComplete, size = "lg" }) {
   const letters = text.split("");
 console.log("🔥 TypingText rendered");
 
-  const sizeClass =
-    size === "sm"
-      ? "text-base md:text-lg"
-      : "text-xl md:text-2xl";
+const sizeClass =
+  size === "sm"
+    ? "text-base md:text-lg"
+    : size === "xl"
+    ? "text-[4rem] md:text-[6rem] lg:text-[8rem]"
+    : "text-xl md:text-2xl";
+
 
   return (
     <motion.div
