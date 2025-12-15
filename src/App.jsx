@@ -40,15 +40,17 @@ useEffect(() => {
     ref,
     (snap) => {
       if (!snap.exists()) {
-        // 🔥 문서 없으면 "허용"으로 간주
+        // 🔥 문서 없으면 기본 허용
         setGlobalEnabled(true);
       } else {
-        setGlobalEnabled(snap.data().enabled === true);
+        setGlobalEnabled(snap.data()?.enabled === true);
       }
       setLoadingGlobal(false);
     },
-    () => {
-      setGlobalEnabled(true); // 에러 시에도 막지 않음
+    (err) => {
+      console.error("🔥 globalAccess snapshot error:", err);
+      // 🔥 에러 나도 서비스 막지 않음
+      setGlobalEnabled(true);
       setLoadingGlobal(false);
     }
   );
