@@ -43,7 +43,8 @@ export default function AdminPage({ goMain }) {
   useEffect(() => {
     if (!isAdmin) return;
 
-    const ref = doc(db, "system", "globalAccess", "config");
+  const ref = doc(db, "system", "globalAccess");
+
 
     // ✅ 최초 문서 보장
     getDoc(ref).then((snap) => {
