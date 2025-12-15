@@ -33,20 +33,28 @@ export default function App() {
   /* ===============================
      🔐 로그인 상태 감지
      =============================== */
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setLoadingUser(false);
+useEffect(() => {
+  const ref = doc(db, "admin", "system", "globalAccess", "config");
 
-      if (!currentUser) {
-        setIsAdmin(false);
-        setPage("login");
-        setLoadingRole(false);
+  const unsub = onSnapshot(
+    ref,
+    (snap) => {
+      if (!snap.exists()) {
+        // 🔥 문서 없으면 "허용"으로 간주
+        setGlobalEnabled(true);
+      } else {
+        setGlobalEnabled(snap.data().enabled === true);
       }
-    });
+      setLoadingGlobal(false);
+    },
+    () => {
+      setGlobalEnabled(true); // 에러 시에도 막지 않음
+      setLoadingGlobal(false);
+    }
+  );
 
-    return () => unsub();
-  }, []);
+  return () => unsub();
+}, []);
 
   /* ===============================
      👑 role 기반 관리자 판별
