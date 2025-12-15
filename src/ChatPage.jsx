@@ -406,14 +406,13 @@ export default function ChatPage({ user,goAdmin }) {
   };
 
   /* ---------------- GPT ---------------- */
-  const buildMessagesForApi = () =>
-    messages.map((m) => ({
-      role: m.sender === "user" ? "user" : "assistant",
-      content: m.text,
-    }));
+  const requestGpt = async (msgs, type) => {
+  const last = msgs[msgs.length - 1]?.content?.trim();
 
-  const requestGpt = async (msgs) => {
-    const last = msgs[msgs.length - 1]?.content?.trim();
+  /* ===============================
+     📝 블로그 전용
+     =============================== */
+  if (type === "blog") {
     if (last === "시작") {
       const r = await fetch("/api/law/start", {
         method: "POST",
@@ -422,10 +421,12 @@ export default function ChatPage({ user,goAdmin }) {
       });
       return (await r.json()).reply;
     }
+
     const filled =
       /✅키워드:\s*\S+/i.test(last) ||
       /✅사기내용:\s*\S+/i.test(last) ||
       /✅구성선택:\s*[1-7]/i.test(last);
+
     if (filled) {
       const r = await fetch("/api/law/blog", {
         method: "POST",
@@ -435,51 +436,85 @@ export default function ChatPage({ user,goAdmin }) {
       const d = await r.json();
       return `# ${d.title}\n\n${d.intro}\n\n${d.body}\n\n## 결론\n${d.conclusion}\n\n${d.summary_table}`;
     }
-    const r = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: msgs }),
-    });
-    return (await r.json()).reply;
-  };
+  }
+
+  /* ===============================
+     💬 채팅 (또는 블로그 일반 대화)
+     =============================== */
+  const r = await fetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages: msgs }),
+  });
+
+  return (await r.json()).reply;
+};
+
+const addChatConversation = async () => {
+  const uid = user.uid;
+  const newId = Date.now().toString();
+
+  await setDoc(doc(db, "users", uid, "conversations", newId), {
+    title: "법률 상담",
+    type: "chat",          // ⭐ 핵심
+    projectId: null,
+    tone: null,            // ❌ 사용 안 함
+    systemPrompt: "",      // ❌ 사용 안 함
+    createdAt: serverTimestamp(),
+  });
+
+  setCurrentId(newId);
+};
 
   /* ---------------- Send ---------------- */
  const sendMessage = async (text) => {
-  if (!text.trim() || !currentConv?.tone || loading) return;
+  if (!text.trim() || loading) return;
 
   const trimmed = text.trim();
+  const isBlog = currentConv?.type === "blog";
+  const isChat = currentConv?.type === "chat";
 
-  // 1️⃣ 유저 메시지 저장
+  // ❌ 블로그인데 톤 안 고르면 차단
+  if (isBlog && !currentConv?.tone) return;
+
+  /* ===============================
+     1️⃣ 유저 메시지 저장
+     =============================== */
   await saveMessage("user", trimmed);
 
-  // 2️⃣ 🔥 "시작" 입력 → 템플릿 즉시 출력 (GPT 호출 ❌)
-  if (trimmed === "시작") {
-const template =
-  "✅키워드:\n" +
-  "✅사기내용:\n" +
-  "✅구성선택:\n\n" +
-  "① 사기 개연성을 중심으로 한 글\n" +
-  "② 주의해야할 위험요소에 대해 디테일하게 분석한 글\n" +
-  "③ 실제로 드러난 정황을 바탕으로 경고형 분석한 글\n" +
-  "④ 피해예방과 도움이 되는 내용을 중점으로 쓴 글\n" +
-  "⑤ 법적 지식과 판례에 관해 전문가의 시점으로 쓴 글\n" +
-  "⑥ 웹사이트 검색 기반으로 실제 뉴스와 실제 사례들을 토대로 한 글\n" +
-  "⑦ 실제 피해 사례를 중점으로 한 글";
-
+  /* ===============================
+     2️⃣ 블로그 + "시작" → 템플릿
+     =============================== */
+  if (isBlog && trimmed === "시작") {
+    const template =
+      "✅키워드:\n" +
+      "✅사기내용:\n" +
+      "✅구성선택:\n\n" +
+      "① 사기 개연성을 중심으로 한 글\n" +
+      "② 주의해야할 위험요소에 대해 디테일하게 분석한 글\n" +
+      "③ 실제로 드러난 정황을 바탕으로 경고형 분석한 글\n" +
+      "④ 피해예방과 도움이 되는 내용을 중점으로 쓴 글\n" +
+      "⑤ 법적 지식과 판례에 관해 전문가의 시점으로 쓴 글\n" +
+      "⑥ 웹사이트 검색 기반으로 실제 뉴스와 실제 사례들을 토대로 한 글\n" +
+      "⑦ 실제 피해 사례를 중점으로 한 글";
 
     await saveMessage("bot", template);
     setInput("");
     resetTextareaHeight();
-    return; // ⭐ 여기서 종료 (GPT 안 탐)
+    return; // ⭐ GPT 호출 안 함
   }
 
-  // 3️⃣ 그 외에만 GPT 호출
+  /* ===============================
+     3️⃣ GPT 호출
+     =============================== */
   setLoading(true);
   try {
     const reply = await requestGpt([
       ...buildMessagesForApi(),
       { role: "user", content: trimmed },
-    ]);
+    ],
+  currentConv.type
+  );
 
     await saveMessage("bot", reply);
   } finally {
