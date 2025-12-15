@@ -97,3 +97,11 @@ html, body, #root {
     @apply border border-gray-200 dark:border-neutral-700 px-2 py-1;
   }
 }
+.markdown-body ol {
+  list-style: decimal;
+  margin-left: 1.25rem;
+}
+
+.markdown-body li {
+  margin-bottom: 0.25rem;
+}

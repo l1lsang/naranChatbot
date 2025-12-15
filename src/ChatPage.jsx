@@ -788,7 +788,7 @@ const template =
                   }`}
                 >
                   <ReactMarkdown
-  remarkPlugins={[remarkGfm, remarkBreaks]}
+  remarkPlugins={[remarkGfm, remarkBreaks]} className="markdown-body"
 >
   {m.text}
 </ReactMarkdown>
