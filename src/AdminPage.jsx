@@ -97,7 +97,7 @@ export default function AdminPage({ goMain }) {
     const user = auth.currentUser;
     if (!user) return;
 
-    const ref = doc(db, "admin", "system");
+    const ref = doc(db, "admin", "system", "globalAccess", "config");
 
     // 1️⃣ 전역 스위치 변경
     await updateDoc(ref, {
