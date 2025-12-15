@@ -285,13 +285,28 @@ export default function ChatPage({ user,goAdmin }) {
   /* ---------------- Auto create conversation ---------------- */
   useEffect(() => {
   if (!user?.uid) return;
-  if (userRole !== "active") return;
+  if (conversations.length !== 0) return;
 
-  // ⭐ 최초 가입자 + 상담 0개 + 아직 선택된 상담 없음
-  if (conversations.length === 0 && currentId === null) {
-    addConversation();
-  }
-}, [user?.uid, userRole, conversations.length, currentId]);
+  const init = async () => {
+    const userRef = doc(db, "users", user.uid);
+    const snap = await getDoc(userRef);
+
+    // 🔥 이미 초기화된 유저면 아무 것도 안 함
+    if (snap.exists() && snap.data()?.hasInitialized) return;
+
+    // ⭐ 최초 1회만 새 상담 생성
+    await addConversation();
+
+    // ✅ 다시는 자동 생성 안 되게 플래그 저장
+    await setDoc(
+      userRef,
+      { hasInitialized: true },
+      { merge: true }
+    );
+  };
+
+  init();
+}, [user?.uid, conversations.length]);
 
 
   /* ---------------- CRUD ---------------- */
