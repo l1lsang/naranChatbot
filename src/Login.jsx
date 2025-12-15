@@ -18,10 +18,11 @@ export default function Login({ goSignup, onFinishLogin }) {
       setError("");
 
       // 🔐 로그인만 담당
-      await signInWithEmailAndPassword(auth, email, pw);
+     await signInWithEmailAndPassword(auth, email, password);
 
-      // ✅ 성공 → 카드 제거
-      setSuccess(true);
+// 🔥 바로 메인으로 가지 말고
+setShowTyping(true);
+
 
       // ⏱ 카드 사라진 뒤 타이핑 등장
       setTimeout(() => {
@@ -116,24 +117,25 @@ export default function Login({ goSignup, onFinishLogin }) {
 
         {/* ✨ 중앙 타이핑 문구 (최상단) */}
         <AnimatePresence>
-          {showTyping && (
-            <motion.div
-              className="absolute inset-0 z-30 flex items-center justify-center"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-            >
-              <TypingText
-                text="Here, Ever Reliable & Open"
-                onComplete={() => {
-                  // ⏱ 타이핑 끝 → 챗봇 진입
-                  setTimeout(() => {
-                    onFinishLogin();
-                  }, 600);
-                }}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+  {showTyping && (
+    <motion.div
+      className="absolute inset-0 z-30 flex items-center justify-center bg-black"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      <TypingText
+        text="Here, Ever Reliable & Open"
+        onComplete={() => {
+          setTimeout(() => {
+            onFinishLogin(); // ⭐ 여기서 진입
+          }, 600);
+        }}
+      />
+    </motion.div>
+  )}
+</AnimatePresence>
+
       </div>
     </div>
   );
