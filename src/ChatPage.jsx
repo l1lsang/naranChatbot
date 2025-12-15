@@ -284,11 +284,15 @@ export default function ChatPage({ user,goAdmin }) {
 
   /* ---------------- Auto create conversation ---------------- */
   useEffect(() => {
-   if (!user?.uid) return;
+  if (!user?.uid) return;
+  if (userRole !== "active") return;
 
-    if (conversations.length === 0 && !currentId) addConversation();
-    // eslint-disable-next-line
-  }, [user?.uid, conversations.length]);
+  // ⭐ 최초 가입자 + 상담 0개 + 아직 선택된 상담 없음
+  if (conversations.length === 0 && currentId === null) {
+    addConversation();
+  }
+}, [user?.uid, userRole, conversations.length, currentId]);
+
 
   /* ---------------- CRUD ---------------- */
   const addProject = async () => {
