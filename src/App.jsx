@@ -56,7 +56,8 @@ export default function App() {
 
   /* 🌍 global access ✅ FIXED */
   useEffect(() => {
-    const ref = doc(db, "system", "globalAccess", "config");
+    const ref = doc(db, "system", "globalAccess");
+
 
     const unsub = onSnapshot(
       ref,
