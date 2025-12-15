@@ -138,7 +138,7 @@ function ToneModal({ open, onSelect, toneOptions }) {
 /* ---------------------------------------------------------
    ■ 메인
 --------------------------------------------------------- */
-export default function ChatPage({ user,goAdmin }) {
+export default function ChatPage({ user,goAdmin, isAdmin }) {
   const textareaRef = useRef(null);
   const chatRef = useRef(null);
 
@@ -579,13 +579,14 @@ const openProjectModal = (project) => {
   setProjectModalOpen(true);
 };
 
-if (globalEnabled === false) {
+if (globalEnabled === false && !isAdmin) {
   return (
     <div className="w-screen h-screen flex items-center justify-center bg-black text-white">
       ⛔ 서비스 점검 중입니다
     </div>
   );
 }
+
 
   /* ---------------- UI ---------------- */
   return (
