@@ -434,24 +434,49 @@ export default function ChatPage({ user }) {
   };
 
   /* ---------------- Send ---------------- */
-  const sendMessage = async (text) => {
-    if (!text.trim() || !currentConv?.tone || loading) return;
-    await saveMessage("user", text.trim());
-    if (text.trim() === "시작") return;
+ const sendMessage = async (text) => {
+  if (!text.trim() || !currentConv?.tone || loading) return;
 
-    setLoading(true);
-    try {
-      const reply = await requestGpt([
-        ...buildMessagesForApi(),
-        { role: "user", content: text.trim() },
-      ]);
-      await saveMessage("bot", reply);
-    } finally {
-      setLoading(false);
-      setInput("");
-      resetTextareaHeight();
-    }
-  };
+  const trimmed = text.trim();
+
+  // 1️⃣ 유저 메시지 저장
+  await saveMessage("user", trimmed);
+
+  // 2️⃣ 🔥 "시작" 입력 → 템플릿 즉시 출력 (GPT 호출 ❌)
+  if (trimmed === "시작") {
+    const template = `✅키워드:  
+✅사기내용:  
+✅구성선택:  
+
+1.\\ 사기 개연성을 중심으로 한 글  
+2.\\ 주의해야할 위험요소에 대해 디테일하게 분석한 글  
+3.\\ 실제로 드러난 정황을 바탕으로 경고형 분석한 글  
+4.\\ 피해예방과 도움이 되는 내용을 중점으로 쓴 글  
+5.\\ 법적 지식과 판례에 관해 전문가의 시점으로 쓴 글  
+6.\\ 웹사이트 검색 기반으로 실제 뉴스와 실제 사례들을 토대로 한 글  
+7.\\ 실제 피해 사례를 중점으로 한 글`;
+
+    await saveMessage("bot", template);
+    setInput("");
+    resetTextareaHeight();
+    return; // ⭐ 여기서 종료 (GPT 안 탐)
+  }
+
+  // 3️⃣ 그 외에만 GPT 호출
+  setLoading(true);
+  try {
+    const reply = await requestGpt([
+      ...buildMessagesForApi(),
+      { role: "user", content: trimmed },
+    ]);
+
+    await saveMessage("bot", reply);
+  } finally {
+    setLoading(false);
+    setInput("");
+    resetTextareaHeight();
+  }
+};
 
   /* ---------------- Tone ---------------- */
   const selectTone = async (toneName) => {
