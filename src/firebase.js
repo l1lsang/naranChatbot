@@ -14,6 +14,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 console.log("🔥 Connected Firebase Project ID:", app.options.projectId);
-
+setPersistence(auth, browserSessionPersistence);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
