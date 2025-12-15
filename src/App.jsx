@@ -149,14 +149,15 @@ export default function App() {
   /* ===============================
      💬 메인 챗봇
      =============================== */
-  if (page === "main") {
-    return (
-      <ChatPage
-        user={user}
-        goAdmin={isAdmin ? () => setPage("admin") : null}
-      />
-    );
-  }
-
-  return null;
+// 🛠 관리자 페이지
+if (page === "admin" && isAdmin) {
+  return <AdminPage goMain={() => setPage("main")} />;
 }
+
+// 💬 기본 화면은 무조건 ChatPage
+return (
+  <ChatPage
+    user={user}
+    goAdmin={isAdmin ? () => setPage("admin") : null}
+  />
+);}
