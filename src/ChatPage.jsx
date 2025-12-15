@@ -129,10 +129,104 @@ export default function ChatPage({ user }) {
 
   // ✅ 첫 메시지 타이핑(1회)
   const [showIntroTyping, setShowIntroTyping] = useState(false);
-  const INTRO_TEXT = "Here, Ever Reliable & Open";
 
   const currentConv = conversations.find((c) => c.id === currentId) || null;
   const currentProject = projects.find((p) => p.id === currentProjectId) || null;
+  useEffect(() => {
+    if (!user?.uid) return;
+    if (userRole !== "active") return;
+
+    const uid = user.uid;
+    const projRef = collection(db, "users", uid, "projects");
+
+    const unsubscribe = onSnapshot(projRef, (snap) => {
+      const list = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+      setProjects(list);
+      if (list.length === 0) setCurrentProjectId(null);
+    });
+
+    return () => unsubscribe();
+  }, [user?.uid, userRole]);
+
+  /* ---------------- Load Conversations ---------------- */
+  useEffect(() => {
+    if (!user?.uid) return;
+    if (userRole !== "active") return;
+
+    const uid = user.uid;
+
+    let convRef;
+    if (currentProjectId) {
+      convRef = query(
+        collection(db, "users", uid, "conversations"),
+        where("projectId", "==", currentProjectId)
+      );
+    } else {
+      convRef = collection(db, "users", uid, "conversations");
+    }
+
+    const unsubscribe = onSnapshot(convRef, async (snap) => {
+      let list = [];
+
+      for (let c of snap.docs) {
+        const convId = c.id;
+        const data = c.data();
+
+        const msgSnap = await getDocs(
+          collection(db, "users", uid, "conversations", convId, "messages")
+        );
+
+        const messages = msgSnap.docs
+          .map((m) => ({ id: m.id, ...m.data() }))
+          .sort((a, b) => {
+            const at = a.createdAt?.seconds || a.clientTime || 0;
+            const bt = b.createdAt?.seconds || b.clientTime || 0;
+            return at - bt;
+          });
+
+        list.push({
+          id: convId,
+          title: data.title || "제목 없음",
+          tone: data.tone || null,
+          projectId: data.projectId || null,
+          systemPrompt: data.systemPrompt || "",
+          color: data.color || null,
+          createdAt: data.createdAt,
+          messages,
+        });
+      }
+
+      list.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+      setConversations(list);
+
+      if (list.length === 0) {
+        setCurrentId(null);
+      } else if (!currentId) {
+        setCurrentId(list[0].id);
+      } else if (currentId && !list.find((c) => c.id === currentId)) {
+        setCurrentId(list[0].id);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [user?.uid, userRole, currentProjectId, currentId]);
+
+  /* ---------------- ✅ 상담 0개면 자동 생성 (상담선택 화면 방지) ---------------- */
+  useEffect(() => {
+    if (!user?.uid) return;
+    if (userRole !== "active") return;
+    if (conversations.length !== 0) return;
+
+    // 목록이 비어있고, 아직 currentId도 없으면 자동 생성
+    if (!currentId) {
+      addConversation();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid, userRole, conversations.length]);
 
   /* ---------------- ROLE Load ---------------- */
   useEffect(() => {
@@ -598,101 +692,7 @@ ${data.summary_table}
   ========================================================= */
 
   /* ---------------- Load Projects ---------------- */
-  useEffect(() => {
-    if (!user?.uid) return;
-    if (userRole !== "active") return;
-
-    const uid = user.uid;
-    const projRef = collection(db, "users", uid, "projects");
-
-    const unsubscribe = onSnapshot(projRef, (snap) => {
-      const list = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
-        .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-
-      setProjects(list);
-      if (list.length === 0) setCurrentProjectId(null);
-    });
-
-    return () => unsubscribe();
-  }, [user?.uid, userRole]);
-
-  /* ---------------- Load Conversations ---------------- */
-  useEffect(() => {
-    if (!user?.uid) return;
-    if (userRole !== "active") return;
-
-    const uid = user.uid;
-
-    let convRef;
-    if (currentProjectId) {
-      convRef = query(
-        collection(db, "users", uid, "conversations"),
-        where("projectId", "==", currentProjectId)
-      );
-    } else {
-      convRef = collection(db, "users", uid, "conversations");
-    }
-
-    const unsubscribe = onSnapshot(convRef, async (snap) => {
-      let list = [];
-
-      for (let c of snap.docs) {
-        const convId = c.id;
-        const data = c.data();
-
-        const msgSnap = await getDocs(
-          collection(db, "users", uid, "conversations", convId, "messages")
-        );
-
-        const messages = msgSnap.docs
-          .map((m) => ({ id: m.id, ...m.data() }))
-          .sort((a, b) => {
-            const at = a.createdAt?.seconds || a.clientTime || 0;
-            const bt = b.createdAt?.seconds || b.clientTime || 0;
-            return at - bt;
-          });
-
-        list.push({
-          id: convId,
-          title: data.title || "제목 없음",
-          tone: data.tone || null,
-          projectId: data.projectId || null,
-          systemPrompt: data.systemPrompt || "",
-          color: data.color || null,
-          createdAt: data.createdAt,
-          messages,
-        });
-      }
-
-      list.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-
-      setConversations(list);
-
-      if (list.length === 0) {
-        setCurrentId(null);
-      } else if (!currentId) {
-        setCurrentId(list[0].id);
-      } else if (currentId && !list.find((c) => c.id === currentId)) {
-        setCurrentId(list[0].id);
-      }
-    });
-
-    return () => unsubscribe();
-  }, [user?.uid, userRole, currentProjectId, currentId]);
-
-  /* ---------------- ✅ 상담 0개면 자동 생성 (상담선택 화면 방지) ---------------- */
-  useEffect(() => {
-    if (!user?.uid) return;
-    if (userRole !== "active") return;
-    if (conversations.length !== 0) return;
-
-    // 목록이 비어있고, 아직 currentId도 없으면 자동 생성
-    if (!currentId) {
-      addConversation();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.uid, userRole, conversations.length]);
+  
 
   /* ---------------- UI ---------------- */
   return (
