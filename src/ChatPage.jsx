@@ -358,17 +358,21 @@ export default function ChatPage({ user,goAdmin }) {
   };
 
   const addConversation = async () => {
-    const id = Date.now().toString();
-    await setDoc(doc(db, "users", user.uid, "conversations", id), {
-      title: "제목 생성 중…",
-      tone: null,
-      projectId: currentProjectId || null,
-      color: currentProject?.color || null,
-      createdAt: serverTimestamp(),
-    });
-    setCurrentId(id);
-    setToneModal(true);
-  };
+  const uid = user.uid;
+  const newId = Date.now().toString();
+
+  await setDoc(doc(db, "users", uid, "conversations", newId), {
+    title: "새 상담",
+    type: "blog",          // ⭐ 이거 없으면 절대 안 뜸
+    projectId: currentProjectId || null,
+    tone: null,
+    systemPrompt: "",
+    createdAt: serverTimestamp(),
+  });
+
+  setCurrentId(newId);
+};
+
 
   const deleteConversation = async (convId) => {
     if (!window.confirm("이 상담을 삭제할까요?")) return;
@@ -472,6 +476,12 @@ const buildMessagesForApi = () => {
   }));
 };
 
+const filteredConversations = useMemo(() => {
+  if (!currentProjectId) return conversations;
+  return conversations.filter(
+    (c) => c.projectId === currentProjectId
+  );
+}, [conversations, currentProjectId]);
 
   /* ---------------- Send ---------------- */
  const sendMessage = async (text) => {
@@ -747,14 +757,14 @@ else {
   <div className="flex items-center justify-between mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
     <span>상담</span>
     <button
-      onClick={addConversation} // 기존 새 상담
+      onClick={addConversation}
       className="text-[11px] px-2 py-1 rounded border bg-[#e5e7eb] dark:bg-[#333]"
     >
       + 새 상담
     </button>
   </div>
 
-  {conversations
+  {filteredConversations
     .filter((c) => c.type === "blog")
     .map((conv) => (
       <div
@@ -767,17 +777,12 @@ else {
               : "bg-white dark:bg-[#1a1a1a]"
           }`}
       >
-        <div className="font-semibold text-sm truncate">{conv.title}</div>
+        <div className="font-semibold text-sm truncate">
+          {conv.title}
+        </div>
       </div>
     ))}
 </div>
-
-{/* ===============================
-    💬 채팅 (자유 대화)
-=============================== */}
-{/* ===============================
-    💬 채팅
-=============================== */}
 <div className="mb-6">
   <div className="flex items-center justify-between mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
     <span>채팅</span>
@@ -789,7 +794,7 @@ else {
     </button>
   </div>
 
-  {conversations
+  {filteredConversations
     .filter((c) => c.type === "chat")
     .map((conv) => (
       <div
@@ -808,6 +813,7 @@ else {
       </div>
     ))}
 </div>
+
 
             <div className="mt-6 border-t pt-4 border-[#e5e7eb] dark:border-[#2a2a2a]">
               <div className="flex items-center gap-3 mb-4">
