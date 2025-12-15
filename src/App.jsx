@@ -34,7 +34,7 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  /* 👑 role (Firestore 기준) */
+  /* 👑 role */
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -54,14 +54,13 @@ export default function App() {
     return () => unsub();
   }, [user?.uid]);
 
-  /* 🌍 global access (중요 수정) */
+  /* 🌍 global access ✅ FIXED */
   useEffect(() => {
-    const ref = doc(db, "admin", "system", "globalAccess", "config");
+    const ref = doc(db, "system", "globalAccess", "config");
 
     const unsub = onSnapshot(
       ref,
       (snap) => {
-        // ✅ globalEnabled 필드로 통일
         setGlobalEnabled(
           snap.exists() ? snap.data()?.enabled ?? true : true
         );
@@ -69,7 +68,7 @@ export default function App() {
       },
       (err) => {
         console.error("🔥 globalAccess error:", err);
-        // ❗ 에러 시 기본은 허용
+        // ❗ 에러 나도 기본은 허용 (UX 보호)
         setGlobalEnabled(true);
         setLoadingGlobal(false);
       }
@@ -99,7 +98,7 @@ export default function App() {
     );
   }
 
-  /* 🚫 전역 차단 (관리자 예외) */
+  /* 🚫 전역 차단 */
   if (!globalEnabled && !isAdmin) {
     return (
       <div className="w-screen h-screen flex items-center justify-center bg-black text-white">

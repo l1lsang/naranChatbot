@@ -18,7 +18,7 @@ export default function AdminPage({ goMain }) {
   const [loading, setLoading] = useState(true);
 
   /* ===============================
-     👑 관리자 여부 (Firestore role 기준)
+     👑 관리자 여부
      =============================== */
   useEffect(() => {
     const checkRole = async () => {
@@ -38,31 +38,29 @@ export default function AdminPage({ goMain }) {
   }, []);
 
   /* ===============================
-     🌍 전역 접근 스위치 구독
+     🌍 전역 접근 스위치 (FIXED)
      =============================== */
   useEffect(() => {
-  if (!isAdmin) return;
+    if (!isAdmin) return;
 
-  const ref = doc(db, "admin", "system", "globalAccess", "config");
+    const ref = doc(db, "system", "globalAccess", "config");
 
-  // 🔹 최초 문서 보장
-  getDoc(ref).then((snap) => {
-    if (!snap.exists()) {
-      setDoc(ref, {
-        enabled: true,
-        updatedAt: serverTimestamp(),
-      });
-    }
-  });
+    // ✅ 최초 문서 보장
+    getDoc(ref).then((snap) => {
+      if (!snap.exists()) {
+        setDoc(ref, {
+          enabled: true,
+          updatedAt: serverTimestamp(),
+        });
+      }
+    });
 
-  // 🔹 읽기 전용 구독
-  const unsub = onSnapshot(ref, (snap) => {
-    setEnabled(snap.data()?.enabled ?? false);
-  });
+    const unsub = onSnapshot(ref, (snap) => {
+      setEnabled(snap.data()?.enabled ?? true);
+    });
 
-  return () => unsub();
-}, [isAdmin]);
-
+    return () => unsub();
+  }, [isAdmin]);
 
   /* ===============================
      ⛔ 접근 제어
@@ -98,16 +96,16 @@ export default function AdminPage({ goMain }) {
     const user = auth.currentUser;
     if (!user) return;
 
-    const ref = doc(db, "admin", "system", "globalAccess", "config");
+    const ref = doc(db, "system", "globalAccess", "config");
 
-    // 1️⃣ 전역 스위치 변경
+    // 1️⃣ 스위치 변경
     await updateDoc(ref, {
       enabled: !enabled,
       updatedAt: serverTimestamp(),
     });
 
-    // 2️⃣ 관리자 로그 기록
-    await addDoc(collection(db, "adminLogs"), {
+    // 2️⃣ 관리자 로그
+    await addDoc(collection(db, "system", "adminLogs"), {
       adminUid: user.uid,
       adminEmail: user.email,
       action: "GLOBAL_ACCESS_TOGGLE",
