@@ -1,50 +1,55 @@
 import { useState } from "react";
-import { auth } from "./firebase";
+import { auth, db } from "./firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
 export default function Signup({ goLogin }) {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [pwCheck, setPwCheck] = useState("");
   const [error, setError] = useState("");
 
-  // 🔐 비밀번호 조건 체크
-  const rules = {
-    length: pw.length >= 8,
-    lower: /[a-z]/.test(pw),
-    upper: /[A-Z]/.test(pw),
-    number: /\d/.test(pw),
-    special: /[@$!%*?&^#()\-_=+[\]{};:'",.<>/\\|`~]/.test(pw),
-  };
-
-  const isValidPassword = Object.values(rules).every(Boolean);
+  // 🔐 비밀번호 조건 (내부 검증용)
+  const isValidPassword =
+    pw.length >= 8 &&
+    /[a-z]/.test(pw) &&
+    /[A-Z]/.test(pw) &&
+    /\d/.test(pw) &&
+    /[@$!%*?&^#()\-_=+[\]{};:'",.<>/\\|`~]/.test(pw);
 
   const handleSignup = async () => {
+    if (!name.trim()) {
+      return setError("이름을 입력해주세요.");
+    }
+
     if (pw !== pwCheck) {
       return setError("비밀번호가 일치하지 않습니다.");
     }
 
     if (!isValidPassword) {
-      return setError(
-        "비밀번호 조건을 모두 충족해주세요."
-      );
+      return setError("비밀번호 형식이 올바르지 않습니다.");
     }
 
     try {
       setError("");
-      await createUserWithEmailAndPassword(auth, email, pw);
+
+      // 1️⃣ Firebase Auth 계정 생성
+      const cred = await createUserWithEmailAndPassword(auth, email, pw);
+      const uid = cred.user.uid;
+
+      // 2️⃣ Firestore 사용자 문서 생성 (role = pending)
+      await setDoc(doc(db, "users", uid), {
+        name: name.trim(),
+        email,
+        role: "pending", // 🔒 기본 권한
+        createdAt: serverTimestamp(),
+      });
+
     } catch (err) {
-      setError("이미 존재하는 계정이거나 형식이 올바르지 않습니다.");
+      setError("이미 존재하는 계정이거나 입력 형식이 올바르지 않습니다.");
     }
   };
-
-  // ✔ / ○ 아이콘 컴포넌트
-  const CheckItem = ({ ok, label }) => (
-    <li className={`flex items-center gap-2 text-sm ${ok ? "text-green-500" : "text-gray-400"}`}>
-      <span>{ok ? "✔︎" : "○"}</span>
-      <span>{label}</span>
-    </li>
-  );
 
   return (
     <div className="w-screen h-screen flex items-center justify-center bg-gray-100 dark:bg-black">
@@ -53,6 +58,16 @@ export default function Signup({ goLogin }) {
           회원가입
         </h1>
 
+        {/* 👤 이름 */}
+        <input
+          type="text"
+          placeholder="이름"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="w-full p-3 border rounded mb-3 dark:bg-neutral-800 dark:text-white"
+        />
+
+        {/* 📧 이메일 */}
         <input
           type="email"
           placeholder="이메일"
@@ -61,22 +76,16 @@ export default function Signup({ goLogin }) {
           className="w-full p-3 border rounded mb-3 dark:bg-neutral-800 dark:text-white"
         />
 
+        {/* 🔐 비밀번호 */}
         <input
           type="password"
-          placeholder="비밀번호"
+          placeholder="비밀번호 (8자 이상, 대/소문자·숫자·특수문자 포함)"
           value={pw}
           onChange={(e) => setPw(e.target.value)}
-          className="w-full p-3 border rounded mb-2 dark:bg-neutral-800 dark:text-white"
+          className="w-full p-3 border rounded mb-3 dark:bg-neutral-800 dark:text-white"
         />
 
-        {/* 🔍 실시간 비밀번호 가이드 */}
-        <ul className="mb-3 space-y-1">
-          <CheckItem ok={rules.length} label="8자 이상" />
-          <CheckItem ok={rules.number} label="숫자 포함" />
-          <CheckItem ok={rules.lower && rules.upper} label="영문 대소문자 포함" />
-          <CheckItem ok={rules.special} label="특수문자 포함" />
-        </ul>
-
+        {/* 🔐 비밀번호 확인 */}
         <input
           type="password"
           placeholder="비밀번호 확인"
