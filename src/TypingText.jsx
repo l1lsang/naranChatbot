@@ -14,7 +14,7 @@ export default function TypingText({ text, onComplete }) {
       variants={{
         visible: {
           transition: {
-            staggerChildren: 0.06,
+            staggerChildren: 1,
           },
         },
       }}
