@@ -940,34 +940,39 @@ else {
           {/* Input */}
           <div className="p-4 border-t dark:border-neutral-700 bg-white dark:bg-neutral-900 flex gap-2">
             <textarea
-              ref={textareaRef}
-              disabled={!currentConv?.tone}
-              value={input}
-              onChange={(e) => {
-                setInput(e.target.value);
-                if (textareaRef.current) {
-                  textareaRef.current.style.height = "auto";
-                  textareaRef.current.style.height =
-                    textareaRef.current.scrollHeight + "px";
-                }
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  sendMessage(input);
-                }
-              }}
-              className={`flex-1 border px-4 py-2 rounded-xl resize-none overflow-hidden leading-relaxed dark:border-neutral-600 ${
-                currentConv?.tone
-                  ? "bg-white dark:bg-neutral-800 dark:text-white"
-                  : "bg-gray-300 dark:bg-neutral-700 cursor-not-allowed"
-              }`}
-              placeholder={
-                currentConv?.tone
-                  ? "Shift + Enter = 줄바꿈 / Enter = 전송"
-                  : "먼저 블로그 톤을 선택해주세요"
-              }
-            />
+  ref={textareaRef}
+  disabled={
+    currentConv?.type === "blog" && !currentConv?.tone
+  }
+  value={input}
+  onChange={(e) => {
+    setInput(e.target.value);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height =
+        textareaRef.current.scrollHeight + "px";
+    }
+  }}
+  onKeyDown={(e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage(input);
+    }
+  }}
+  className={`flex-1 border px-4 py-2 rounded-xl resize-none overflow-hidden leading-relaxed dark:border-neutral-600 ${
+    currentConv?.type === "blog" && !currentConv?.tone
+      ? "bg-gray-300 dark:bg-neutral-700 cursor-not-allowed"
+      : "bg-white dark:bg-neutral-800 dark:text-white"
+  }`}
+  placeholder={
+    currentConv?.type === "chat"
+      ? "법률에 대해 궁금한 점을 자유롭게 질문해보세요"
+      : currentConv?.tone
+      ? "Shift + Enter = 줄바꿈 / Enter = 전송"
+      : "먼저 블로그 톤을 선택해주세요"
+  }
+/>
+
 
             <button
               onClick={() => sendMessage(input)}
