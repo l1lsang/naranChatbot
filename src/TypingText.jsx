@@ -8,8 +8,9 @@ const sizeClass =
   size === "sm"
     ? "text-base md:text-lg"
     : size === "xl"
-    ? "text-[4rem] md:text-[6rem] lg:text-[8rem]"
+    ? "text-3xl md:text-5xl lg:text-6xl"
     : "text-xl md:text-2xl";
+
 
 
   return (
