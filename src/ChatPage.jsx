@@ -187,6 +187,16 @@ export default function ChatPage({ user,goAdmin }) {
     if (!textareaRef.current) return;
     textareaRef.current.style.height = "auto";
   };
+useEffect(() => {
+  if (!currentConv) return;
+
+  // 블로그 상담 + 톤 미선택 → 톤 모달 강제 오픈
+  if (currentConv.type === "blog" && !currentConv.tone) {
+    setToneModal(true);
+  } else {
+    setToneModal(false);
+  }
+}, [currentConv]);
 
   /* ---------------- Dark Mode ---------------- */
   useEffect(() => {
@@ -363,6 +373,7 @@ export default function ChatPage({ user,goAdmin }) {
   });
 
   setCurrentId(newId);
+  setToneModal(true);
 };
 
 
