@@ -28,16 +28,6 @@ import moon from "../src/img/moon.png";
 import sun from "../src/img/sun.png";
 import p from "../src/img/p.png";
 import book from "../src/img/book.png";
-const [globalEnabled, setGlobalEnabled] = useState(null);
-
-// 🌍 전역 접근 상태 구독
-useEffect(() => {
-  const ref = doc(db, "admin", "system", "globalAccess");
-  return onSnapshot(ref, (snap) => {
-    setGlobalEnabled(snap.data()?.enabled ?? false);
-  });
-}, []);
-
 /* ---------------------------------------------------------
    ■ 프로젝트 편집 모달
 --------------------------------------------------------- */
@@ -150,7 +140,15 @@ function ToneModal({ open, onSelect, toneOptions }) {
 export default function ChatPage({ user }) {
   const textareaRef = useRef(null);
   const chatRef = useRef(null);
+  const [globalEnabled, setGlobalEnabled] = useState(null);
 
+  // 🌍 전역 접근 상태 구독
+  useEffect(() => {
+    const ref = doc(db, "admin", "system", "globalAccess");
+    return onSnapshot(ref, (snap) => {
+      setGlobalEnabled(snap.data()?.enabled ?? false);
+    });
+  }, []);
   /* ---------------- State ---------------- */
   const [darkMode, setDarkMode] = useState(false);
   const [toneModal, setToneModal] = useState(false);
