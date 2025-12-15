@@ -34,7 +34,7 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  /* 👑 role */
+  /* 👑 role (Firestore 기준) */
   useEffect(() => {
     if (!user?.uid) return;
 
@@ -54,19 +54,23 @@ export default function App() {
     return () => unsub();
   }, [user?.uid]);
 
-  /* 🌍 global access */
+  /* 🌍 global access (중요 수정) */
   useEffect(() => {
     const ref = doc(db, "admin", "system", "globalAccess", "config");
 
     const unsub = onSnapshot(
       ref,
       (snap) => {
-        setGlobalEnabled(snap.exists() ? snap.data()?.enabled ?? false : false);
+        // ✅ globalEnabled 필드로 통일
+        setGlobalEnabled(
+          snap.exists() ? snap.data()?.globalEnabled ?? true : true
+        );
         setLoadingGlobal(false);
       },
       (err) => {
         console.error("🔥 globalAccess error:", err);
-        setGlobalEnabled(false);
+        // ❗ 에러 시 기본은 허용
+        setGlobalEnabled(true);
         setLoadingGlobal(false);
       }
     );
@@ -74,18 +78,28 @@ export default function App() {
     return () => unsub();
   }, []);
 
+  /* ⏳ 로딩 */
   if (loadingUser || loadingRole || loadingGlobal) {
-    return <div className="w-screen h-screen flex items-center justify-center">🔄 상태 확인 중…</div>;
+    return (
+      <div className="w-screen h-screen flex items-center justify-center">
+        🔄 상태 확인 중…
+      </div>
+    );
   }
 
+  /* 🚫 로그인 안 됨 */
   if (!user) {
     return page === "login" ? (
-      <Login goSignup={() => setPage("signup")} onFinishLogin={() => setPage("intro")} />
+      <Login
+        goSignup={() => setPage("signup")}
+        onFinishLogin={() => setPage("intro")}
+      />
     ) : (
       <Signup goLogin={() => setPage("login")} />
     );
   }
 
+  /* 🚫 전역 차단 (관리자 예외) */
   if (!globalEnabled && !isAdmin) {
     return (
       <div className="w-screen h-screen flex items-center justify-center bg-black text-white">
@@ -94,17 +108,29 @@ export default function App() {
     );
   }
 
+  /* 🎬 인트로 */
   if (page === "intro") {
     return (
       <div className="w-screen h-screen flex items-center justify-center bg-black">
-        <TypingText text="Here, Ever Reliable & Open" size="lg" onComplete={() => setPage("main")} />
+        <TypingText
+          text="Here, Ever Reliable & Open"
+          size="lg"
+          onComplete={() => setPage("main")}
+        />
       </div>
     );
   }
 
+  /* 🛠 관리자 */
   if (page === "admin" && isAdmin) {
     return <AdminPage goMain={() => setPage("main")} />;
   }
 
-  return <ChatPage user={user} goAdmin={isAdmin ? () => setPage("admin") : null} />;
+  /* 💬 메인 */
+  return (
+    <ChatPage
+      user={user}
+      goAdmin={isAdmin ? () => setPage("admin") : null}
+    />
+  );
 }
