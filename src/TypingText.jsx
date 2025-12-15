@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 
 export default function TypingText({ text, onComplete, size = "lg" }) {
   const letters = text.split("");
+console.log("🔥 TypingText rendered");
 
   const sizeClass =
     size === "sm"
