@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { auth } from "./firebase";
 import { onAuthStateChanged } from "firebase/auth";
-import { AnimatePresence, motion } from "framer-motion";
 
 import Login from "./Login";
 import Signup from "./Signup";
@@ -12,7 +11,10 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [page, setPage] = useState("login");
-  const [readyForChat, setReadyForChat] = useState(false);
+
+  // 🔑 인트로 제어
+  const [showIntro, setShowIntro] = useState(false);
+  const [introDone, setIntroDone] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (currentUser) => {
@@ -25,60 +27,40 @@ export default function App() {
   if (loadingUser) {
     return (
       <div className="w-screen h-screen flex items-center justify-center">
-        🔄 로그인 상태 확인 중…
+        🔄 로그인 확인 중…
       </div>
     );
   }
 
-  return (
-    <div className="w-screen h-screen relative overflow-hidden">
-      {/* 🌊 배경 레이어 */}
-      <AnimatePresence mode="wait">
-        {!readyForChat ? (
-          <motion.div
-            key="login-bg"
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: "url('/back.png')" }}
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 1.2, ease: "easeInOut" }}
-          />
-        ) : (
-          <motion.div
-            key="chat-bg"
-            className="
-              absolute inset-0
-              bg-gradient-to-br
-              from-slate-900 via-neutral-900 to-black
-            "
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 1.2, ease: "easeInOut" }}
-          />
-        )}
-      </AnimatePresence>
+  /* ---------------- 로그인 안 됨 ---------------- */
+  if (!user) {
+    return page === "login" ? (
+      <Login
+        goSignup={() => setPage("signup")}
+        onFinishLogin={() => setShowIntro(true)} // ⭐ 여기
+      />
+    ) : (
+      <Signup goLogin={() => setPage("login")} />
+    );
+  }
 
-      {/* 🧩 콘텐츠 레이어 */}
-      <div className="relative z-10 w-full h-full flex items-center justify-center">
-        {!user ? (
-          page === "login" ? (
-            <Login goSignup={() => setPage("signup")} />
-          ) : (
-            <Signup goLogin={() => setPage("login")} />
-          )
-        ) : !readyForChat ? (
-          <TypingText
-            text="Here, Ever Reliable & Open"
-            onComplete={() => {
-              setTimeout(() => {
-                setReadyForChat(true);
-              }, 600);
-            }}
-          />
-        ) : (
-          <ChatPage user={user} />
-        )}
+  /* ---------------- 로그인 직후 인트로 ---------------- */
+  if (showIntro && !introDone) {
+    return (
+      <div className="w-screen h-screen flex items-center justify-center bg-black">
+        <TypingText
+          text="Here, Ever Reliable & Open"
+          onComplete={() => {
+            setTimeout(() => {
+              setIntroDone(true);
+              setShowIntro(false);
+            }, 600);
+          }}
+        />
       </div>
-    </div>
-  );
+    );
+  }
+
+  /* ---------------- 메인 챗봇 ---------------- */
+  return <ChatPage user={user} />;
 }
