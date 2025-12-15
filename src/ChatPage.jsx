@@ -137,7 +137,7 @@ function ToneModal({ open, onSelect, toneOptions }) {
 /* ---------------------------------------------------------
    ■ 메인
 --------------------------------------------------------- */
-export default function ChatPage({ user }) {
+export default function ChatPage({ user,goAdmin }) {
   const textareaRef = useRef(null);
   const chatRef = useRef(null);
   const [globalEnabled, setGlobalEnabled] = useState(null);
