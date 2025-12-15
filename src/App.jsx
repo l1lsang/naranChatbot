@@ -24,9 +24,9 @@ export default function App() {
   const [loadingRole, setLoadingRole] = useState(true);
 
   /* ===============================
-     🌍 Global Access (🔥 핵심)
+     🌍 Global Access
      =============================== */
-  const [globalEnabled, setGlobalEnabled] = useState(null); // ❗ null = 아직 모름
+  const [globalEnabled, setGlobalEnabled] = useState(null); // 중요
   const [loadingGlobal, setLoadingGlobal] = useState(true);
 
   /* ===============================
@@ -35,7 +35,7 @@ export default function App() {
   const [page, setPage] = useState("login");
 
   /* ===============================
-     🔐 Auth 상태 구독
+     🔐 Auth 상태
      =============================== */
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -65,8 +65,7 @@ export default function App() {
         setIsAdmin(snap.exists() && snap.data()?.role === "admin");
         setLoadingRole(false);
       },
-      (err) => {
-        console.error("🔥 role error:", err);
+      () => {
         setIsAdmin(false);
         setLoadingRole(false);
       }
@@ -76,7 +75,7 @@ export default function App() {
   }, [user?.uid]);
 
   /* ===============================
-     🌍 Global Access 구독 (🔥 가장 중요)
+     🌍 Global Access 구독 (🔥 핵심)
      =============================== */
   useEffect(() => {
     const ref = doc(db, "system", "globalAccess");
@@ -85,18 +84,19 @@ export default function App() {
       ref,
       (snap) => {
         if (!snap.exists()) {
-          // 문서가 없으면 기본 허용
+          // 문서 없으면 기본 허용
           setGlobalEnabled(true);
         } else {
-          // ❗ enabled === true 일 때만 허용
-          setGlobalEnabled(snap.data()?.enabled === true);
+          // ❗ boolean 그대로 신뢰
+          setGlobalEnabled(Boolean(snap.data()?.enabled));
         }
         setLoadingGlobal(false);
       },
       (err) => {
         console.error("🔥 globalAccess error:", err);
-        // ❗ 에러 = 무조건 차단
-        setGlobalEnabled(false);
+
+        // ❗ 에러 시 차단 ❌ → 판단 유보 ⭕
+        setGlobalEnabled(null);
         setLoadingGlobal(false);
       }
     );
