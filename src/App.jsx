@@ -34,7 +34,7 @@ export default function App() {
      🔐 로그인 상태 감지
      =============================== */
 useEffect(() => {
-  const ref = doc(db, "admin", "system", "globalAccess", "config");
+ const ref = doc(db, "admin", "system");
 
   const unsub = onSnapshot(
     ref,
