@@ -26,7 +26,7 @@ export default function App() {
   /* ===============================
      🌍 Global Access
      =============================== */
-  const [globalEnabled, setGlobalEnabled] = useState(null); // 중요
+  const [globalEnabled, setGlobalEnabled] = useState(true);
   const [loadingGlobal, setLoadingGlobal] = useState(true);
 
   /* ===============================
@@ -35,7 +35,7 @@ export default function App() {
   const [page, setPage] = useState("login");
 
   /* ===============================
-     🔐 Auth 상태
+     🔐 Auth 상태 구독
      =============================== */
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -75,7 +75,7 @@ export default function App() {
   }, [user?.uid]);
 
   /* ===============================
-     🌍 Global Access 구독 (🔥 핵심)
+     🌍 Global Access 구독 (핵심)
      =============================== */
   useEffect(() => {
     const ref = doc(db, "system", "globalAccess");
@@ -87,16 +87,14 @@ export default function App() {
           // 문서 없으면 기본 허용
           setGlobalEnabled(true);
         } else {
-          // ❗ boolean 그대로 신뢰
           setGlobalEnabled(Boolean(snap.data()?.enabled));
         }
         setLoadingGlobal(false);
       },
       (err) => {
         console.error("🔥 globalAccess error:", err);
-
-        // ❗ 에러 시 차단 ❌ → 판단 유보 ⭕
-        setGlobalEnabled(null);
+        // ❗ 에러 나도 UX는 진행
+        setGlobalEnabled(true);
         setLoadingGlobal(false);
       }
     );
@@ -105,14 +103,9 @@ export default function App() {
   }, []);
 
   /* ===============================
-     ⏳ 전역 로딩 (절대 중요)
+     ⏳ 전역 로딩
      =============================== */
-  if (
-    loadingUser ||
-    loadingRole ||
-    loadingGlobal ||
-    globalEnabled === null
-  ) {
+  if (loadingUser || loadingRole || loadingGlobal) {
     return (
       <div className="w-screen h-screen flex items-center justify-center">
         🔄 상태 확인 중…
