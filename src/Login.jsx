@@ -37,8 +37,6 @@ export default function Login() {
           backgroundImage: "url('/back.png')", // 🔥 여기만 수정
         }}
       >
-        {/* 선택: 어두운 오버레이 */}
-        <div className="absolute inset-0 bg-black/40" />
       </div>
 
       {/* 로그인 카드 */}
