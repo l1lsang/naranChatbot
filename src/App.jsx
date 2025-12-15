@@ -16,13 +16,7 @@ export default function App() {
      =============================== */
   const [user, setUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
-  const [page, setPage] = useState("login"); // login | signup | main | admin
-
-  /* ===============================
-     🎬 인트로
-     =============================== */
-  const [showIntro, setShowIntro] = useState(false);
-  const [introDone, setIntroDone] = useState(false);
+  const [page, setPage] = useState("login"); // login | signup | intro | main | admin
 
   /* ===============================
      👑 관리자 여부
@@ -64,7 +58,9 @@ export default function App() {
     const unsub = onSnapshot(
       ref,
       (snap) => {
-        setGlobalEnabled(snap.exists() ? snap.data()?.globalAccess ?? false : false);
+        setGlobalEnabled(
+          snap.exists() ? snap.data()?.globalAccess ?? false : false
+        );
         setLoadingGlobal(false);
       },
       () => {
@@ -95,7 +91,7 @@ export default function App() {
       <Login
         goSignup={() => setPage("signup")}
         onFinishLogin={() => {
-          setShowIntro(true);   // ⭐ 인트로 시작
+          setPage("intro"); // ⭐ 핵심
         }}
       />
     ) : (
@@ -108,10 +104,10 @@ export default function App() {
      =============================== */
   if (!globalEnabled && !isAdmin) {
     return (
-      <div className="w-screen h-screen flex items-center justify-center bg-gray-50 dark:bg-black">
-        <div className="text-center">
+      <div className="w-screen h-screen flex items-center justify-center bg-black">
+        <div className="text-center text-white">
           <h2 className="text-xl font-bold mb-2">⛔ 서비스 점검 중</h2>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-gray-400">
             현재 관리자가 전체 접근을 제한했습니다.
           </p>
         </div>
@@ -120,18 +116,16 @@ export default function App() {
   }
 
   /* ===============================
-     🎬 로그인 직후 인트로
+     🎬 인트로
      =============================== */
-  if (showIntro && !introDone) {
+  if (page === "intro") {
     return (
       <div className="w-screen h-screen flex items-center justify-center bg-black">
         <TypingText
           text="Here, Ever Reliable & Open"
           onComplete={() => {
             setTimeout(() => {
-              setIntroDone(true);
-              setShowIntro(false);
-              setPage("main"); // ⭐⭐⭐ 핵심
+              setPage("main");
             }, 600);
           }}
         />
@@ -142,22 +136,24 @@ export default function App() {
   /* ===============================
      🛠 관리자 페이지
      =============================== */
-  if (isAdmin && page === "admin") {
+  if (page === "admin" && isAdmin) {
     return <AdminPage goMain={() => setPage("main")} />;
   }
 
   /* ===============================
      💬 메인 챗봇
      =============================== */
-// 🛠 관리자 페이지
-if (page === "admin" && isAdmin) {
-  return <AdminPage goMain={() => setPage("main")} />;
-}
+  if (page === "main") {
+    return (
+      <ChatPage
+        user={user}
+        goAdmin={isAdmin ? () => setPage("admin") : null}
+      />
+    );
+  }
 
-// 💬 기본 화면은 무조건 ChatPage
-return (
-  <ChatPage
-    user={user}
-    goAdmin={isAdmin ? () => setPage("admin") : null}
-  />
-);}
+  /* ===============================
+     🧯 안전장치
+     =============================== */
+  return null;
+}
