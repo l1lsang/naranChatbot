@@ -1,11 +1,11 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
 import {
   getAuth,
   setPersistence,
   browserSessionPersistence,
+  inMemoryPersistence,
 } from "firebase/auth";
-
+import { getFirestore } from "firebase/firestore";
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH,
@@ -23,7 +23,7 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 
 // 3️⃣ 🔐 자동 로그인 방지 (세션 단위 유지)
-setPersistence(auth, browserSessionPersistence);
+setPersistence(auth, inMemoryPersistence);
 
 // 4️⃣ 연결 확인 로그
 console.log("🔥 Connected Firebase Project ID:", app.options.projectId);
