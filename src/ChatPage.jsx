@@ -97,6 +97,13 @@ useEffect(() => {
 
   /* ---------------- Load Projects ---------------- */
   useEffect(() => {
+  if (!user) return;
+  if (conversations.length === 0) {
+    addConversation(); // 자동으로 새 상담 생성
+  }
+}, [user, conversations]);
+
+  useEffect(() => {
     if (!user?.uid) return;
 
     const uid = user.uid;
