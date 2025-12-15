@@ -41,26 +41,28 @@ export default function AdminPage({ goMain }) {
      🌍 전역 접근 스위치 구독
      =============================== */
   useEffect(() => {
-    if (!isAdmin) return;
+  if (!isAdmin) return;
 
-    const ref = doc(db, "admin", "system", "globalAccess", "config");
+  const ref = doc(db, "admin", "system", "globalAccess", "config");
 
-    const unsub = onSnapshot(ref, async (snap) => {
-      if (!snap.exists()) {
-        // 최초 1회 생성
-        await setDoc(ref, {
-          enabled: true,
-          updatedAt: serverTimestamp(),
-        });
-        setEnabled(true);
-        return;
-      }
+  // 🔹 최초 문서 보장
+  getDoc(ref).then((snap) => {
+    if (!snap.exists()) {
+      setDoc(ref, {
+        enabled: true,
+        updatedAt: serverTimestamp(),
+      });
+    }
+  });
 
-      setEnabled(snap.data()?.enabled ?? false);
-    });
+  // 🔹 읽기 전용 구독
+  const unsub = onSnapshot(ref, (snap) => {
+    setEnabled(snap.data()?.enabled ?? false);
+  });
 
-    return () => unsub();
-  }, [isAdmin]);
+  return () => unsub();
+}, [isAdmin]);
+
 
   /* ===============================
      ⛔ 접근 제어
