@@ -18,7 +18,7 @@ export default function AdminPage({ goMain }) {
   const [loading, setLoading] = useState(true);
 
   /* ===============================
-     👑 관리자 여부
+     👑 관리자 여부 확인
      =============================== */
   useEffect(() => {
     const checkRole = async () => {
@@ -38,15 +38,14 @@ export default function AdminPage({ goMain }) {
   }, []);
 
   /* ===============================
-     🌍 전역 접근 스위치 (FIXED)
+     🌍 전역 접근 스위치 구독
      =============================== */
   useEffect(() => {
     if (!isAdmin) return;
 
-  const ref = doc(db, "system", "globalAccess");
+    const ref = doc(db, "system", "globalAccess");
 
-
-    // ✅ 최초 문서 보장
+    // ✅ 문서 없으면 최초 생성
     getDoc(ref).then((snap) => {
       if (!snap.exists()) {
         setDoc(ref, {
@@ -62,6 +61,32 @@ export default function AdminPage({ goMain }) {
 
     return () => unsub();
   }, [isAdmin]);
+
+  /* ===============================
+     🔘 전역 스위치 토글
+     =============================== */
+  const toggle = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const ref = doc(db, "system", "globalAccess");
+
+    // 1️⃣ 스위치 변경
+    await updateDoc(ref, {
+      enabled: !enabled,
+      updatedAt: serverTimestamp(),
+    });
+
+    // 2️⃣ 관리자 로그 기록
+    await addDoc(collection(db, "adminLogs"), {
+      adminUid: user.uid,
+      adminEmail: user.email,
+      action: "GLOBAL_ACCESS_TOGGLE",
+      before: enabled,
+      after: !enabled,
+      createdAt: serverTimestamp(),
+    });
+  };
 
   /* ===============================
      ⛔ 접근 제어
@@ -91,32 +116,8 @@ export default function AdminPage({ goMain }) {
   }
 
   /* ===============================
-     🔘 전역 스위치 토글 + 로그
+     ✅ UI
      =============================== */
-  const toggle = async () => {
-    const user = auth.currentUser;
-    if (!user) return;
-
-    const ref = doc(db, "system", "globalAccess");
-
-
-    // 1️⃣ 스위치 변경
-    await updateDoc(ref, {
-      enabled: !enabled,
-      updatedAt: serverTimestamp(),
-    });
-
-    // 2️⃣ 관리자 로그
-    await addDoc(collection(db, "system", "adminLogs"), {
-      adminUid: user.uid,
-      adminEmail: user.email,
-      action: "GLOBAL_ACCESS_TOGGLE",
-      before: enabled,
-      after: !enabled,
-      createdAt: serverTimestamp(),
-    });
-  };
-
   return (
     <div className="w-screen h-screen flex items-center justify-center bg-gray-50">
       <div className="bg-white p-8 rounded-2xl shadow-xl w-[360px] text-center">
