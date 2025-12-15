@@ -994,7 +994,7 @@ ${data.summary_table}
           <main className="flex-1 flex flex-col bg-gray-50 dark:bg-black">
             <header className="p-4 border-b dark:border-neutral-700 bg-white dark:bg-neutral-900">
               <h1 className="text-xl font-semibold dark:text-white">
-                상담 챗봇
+                LAW HERO
               </h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {user.email} 님
