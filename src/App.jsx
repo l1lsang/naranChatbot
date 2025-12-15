@@ -11,38 +11,58 @@ import AdminPage from "./AdminPage";
 import TypingText from "./TypingText";
 
 export default function App() {
+  /* ===============================
+     🔐 Auth
+     =============================== */
   const [user, setUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
-  const [page, setPage] = useState("login");
 
+  /* ===============================
+     👑 Role
+     =============================== */
   const [isAdmin, setIsAdmin] = useState(false);
   const [loadingRole, setLoadingRole] = useState(true);
 
-  const [globalEnabled, setGlobalEnabled] = useState(true);
+  /* ===============================
+     🌍 Global Access
+     =============================== */
+  const [globalEnabled, setGlobalEnabled] = useState(null); // ❗ 중요
   const [loadingGlobal, setLoadingGlobal] = useState(true);
 
-  /* 🔐 Auth */
+  /* ===============================
+     📄 Page
+     =============================== */
+  const [page, setPage] = useState("login");
+
+  /* ===============================
+     🔐 Auth 상태
+     =============================== */
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setLoadingUser(false);
+
       if (!u) {
         setIsAdmin(false);
         setLoadingRole(false);
       }
     });
+
     return () => unsub();
   }, []);
 
-  /* 👑 role */
+  /* ===============================
+     👑 Role 구독
+     =============================== */
   useEffect(() => {
     if (!user?.uid) return;
 
     const ref = doc(db, "users", user.uid);
+
     const unsub = onSnapshot(
       ref,
       (snap) => {
-        setIsAdmin(snap.data()?.role === "admin");
+        setIsAdmin(snap.exists() && snap.data()?.role === "admin");
         setLoadingRole(false);
       },
       () => {
@@ -54,23 +74,25 @@ export default function App() {
     return () => unsub();
   }, [user?.uid]);
 
-  /* 🌍 global access ✅ FIXED */
+  /* ===============================
+     🌍 Global Access 구독 (핵심)
+     =============================== */
   useEffect(() => {
     const ref = doc(db, "system", "globalAccess");
-
 
     const unsub = onSnapshot(
       ref,
       (snap) => {
-        setGlobalEnabled(
-          snap.exists() ? snap.data()?.enabled ?? true : true
-        );
+        if (!snap.exists()) {
+          setGlobalEnabled(true); // 문서 없으면 기본 허용
+        } else {
+          setGlobalEnabled(snap.data()?.enabled);
+        }
         setLoadingGlobal(false);
       },
       (err) => {
         console.error("🔥 globalAccess error:", err);
-        // ❗ 에러 나도 기본은 허용 (UX 보호)
-        setGlobalEnabled(true);
+        setGlobalEnabled(null); // ❗ 판단 보류
         setLoadingGlobal(false);
       }
     );
@@ -78,8 +100,15 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  /* ⏳ 로딩 */
-  if (loadingUser || loadingRole || loadingGlobal) {
+  /* ===============================
+     ⏳ 전역 로딩 (절대 중요)
+     =============================== */
+  if (
+    loadingUser ||
+    loadingRole ||
+    loadingGlobal ||
+    globalEnabled === null
+  ) {
     return (
       <div className="w-screen h-screen flex items-center justify-center">
         🔄 상태 확인 중…
@@ -87,7 +116,9 @@ export default function App() {
     );
   }
 
-  /* 🚫 로그인 안 됨 */
+  /* ===============================
+     🚫 로그인 안 됨
+     =============================== */
   if (!user) {
     return page === "login" ? (
       <Login
@@ -99,16 +130,25 @@ export default function App() {
     );
   }
 
-  /* 🚫 전역 차단 */
-  if (!globalEnabled && !isAdmin) {
+  /* ===============================
+     ⛔ 전역 차단 (관리자 제외)
+     =============================== */
+  if (globalEnabled === false && !isAdmin) {
     return (
       <div className="w-screen h-screen flex items-center justify-center bg-black text-white">
-        ⛔ 서비스 점검 중
+        <div className="text-center">
+          <h2 className="text-xl font-bold mb-2">⛔ 서비스 점검 중</h2>
+          <p className="text-gray-400">
+            현재 관리자가 전체 접근을 제한했습니다.
+          </p>
+        </div>
       </div>
     );
   }
 
-  /* 🎬 인트로 */
+  /* ===============================
+     🎬 Intro
+     =============================== */
   if (page === "intro") {
     return (
       <div className="w-screen h-screen flex items-center justify-center bg-black">
@@ -121,12 +161,16 @@ export default function App() {
     );
   }
 
-  /* 🛠 관리자 */
+  /* ===============================
+     🛠 Admin
+     =============================== */
   if (page === "admin" && isAdmin) {
     return <AdminPage goMain={() => setPage("main")} />;
   }
 
-  /* 💬 메인 */
+  /* ===============================
+     💬 Main
+     =============================== */
   return (
     <ChatPage
       user={user}
