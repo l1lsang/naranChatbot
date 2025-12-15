@@ -105,3 +105,19 @@ html, body, #root {
 .markdown-body li {
   margin-bottom: 0.25rem;
 }
+@layer components {
+  /* 🔥 prose가 죽인 리스트 번호 되살리기 */
+  .chat-markdown ol {
+    list-style-type: decimal !important;
+    padding-left: 1.25rem;
+  }
+
+  .chat-markdown ul {
+    list-style-type: disc !important;
+    padding-left: 1.25rem;
+  }
+
+  .chat-markdown li {
+    margin-bottom: 0.25rem;
+  }
+}
