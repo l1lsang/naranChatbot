@@ -795,6 +795,39 @@ else {
                 );
               })}
             </div>
+{/* ===============================
+    💬 채팅 (자유 대화)
+=============================== */}
+<div className="mb-6">
+  <div className="flex items-center justify-between mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
+    <span>채팅</span>
+    <button
+      onClick={addChatConversation}
+      className="text-[11px] px-2 py-1 rounded border bg-[#e5e7eb] dark:bg-[#333]"
+    >
+      + 새 채팅
+    </button>
+  </div>
+
+  {conversations
+    .filter((c) => c.type === "chat")
+    .map((conv) => (
+      <div
+        key={conv.id}
+        onClick={() => setCurrentId(conv.id)}
+        className={`p-3 rounded-lg border cursor-pointer mb-1
+          ${
+            currentId === conv.id
+              ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30"
+              : "bg-white dark:bg-[#1a1a1a]"
+          }`}
+      >
+        <div className="font-semibold text-sm truncate">
+          {conv.title || "법률 채팅"}
+        </div>
+      </div>
+    ))}
+</div>
 
             <div className="mt-6 border-t pt-4 border-[#e5e7eb] dark:border-[#2a2a2a]">
               <div className="flex items-center gap-3 mb-4">
