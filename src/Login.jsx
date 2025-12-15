@@ -9,7 +9,7 @@ export default function Login({ goSignup, onFinishLogin }) {
   const [pw, setPw] = useState("");
   const [error, setError] = useState("");
 
-  const [success, setSuccess] = useState(false);   // 로그인 성공
+  const [success, setSuccess] = useState(false);     // 로그인 성공
   const [showTyping, setShowTyping] = useState(false); // 타이핑 노출
 
   const handleAuth = async (e) => {
@@ -34,13 +34,13 @@ export default function Login({ goSignup, onFinishLogin }) {
 
   return (
     <div className="w-screen h-screen relative overflow-hidden">
-      {/* 🌌 배경 이미지 */}
+      {/* 🌌 배경 이미지 (완전 최하단) */}
       <div
-        className="absolute inset-0 bg-cover bg-center"
+        className="absolute inset-0 z-0 bg-cover bg-center pointer-events-none"
         style={{ backgroundImage: "url('/back.png')" }}
       />
 
-      {/* 메인 레이어 */}
+      {/* 🧱 메인 레이어 */}
       <div className="relative z-10 w-full h-full flex items-center justify-center">
         {/* 🟦 로그인 카드 */}
         <AnimatePresence>
@@ -50,7 +50,7 @@ export default function Login({ goSignup, onFinishLogin }) {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ delay: 1.5, duration: 0.6 }}
+              transition={{ delay: 1.2, duration: 0.6 }}
               className="
                 relative p-[1px] rounded-2xl
                 bg-gradient-to-br
@@ -69,7 +69,7 @@ export default function Login({ goSignup, onFinishLogin }) {
                     placeholder="Email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full p-2 border rounded mb-3"
+                    className="w-full p-2 border rounded mb-3 focus:outline-none focus:ring-2 focus:ring-sky-300"
                   />
 
                   <input
@@ -77,7 +77,7 @@ export default function Login({ goSignup, onFinishLogin }) {
                     placeholder="Password"
                     value={pw}
                     onChange={(e) => setPw(e.target.value)}
-                    className="w-full p-2 border rounded mb-3"
+                    className="w-full p-2 border rounded mb-3 focus:outline-none focus:ring-2 focus:ring-pink-300"
                   />
 
                   {error && (
@@ -114,11 +114,11 @@ export default function Login({ goSignup, onFinishLogin }) {
           )}
         </AnimatePresence>
 
-        {/* ✨ 타이핑 문구 */}
+        {/* ✨ 중앙 타이핑 문구 (최상단) */}
         <AnimatePresence>
           {showTyping && (
             <motion.div
-              className="absolute inset-0 flex items-center justify-center"
+              className="absolute inset-0 z-30 flex items-center justify-center"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
             >
