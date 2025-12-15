@@ -144,13 +144,21 @@ export default function ChatPage({ user,goAdmin }) {
 
 
   // 🌍 전역 접근 상태 구독
-  useEffect(() => {
-    const ref = doc(db, "admin", "system", "globalAccess", "config");
+ useEffect(() => {
+  const ref = doc(db, "system", "globalAccess");
 
-    return onSnapshot(ref, (snap) => {
-      setGlobalEnabled(snap.data()?.enabled ?? false);
-    });
-  }, []);
+  return onSnapshot(
+    ref,
+    (snap) => {
+      setGlobalEnabled(snap.exists() ? snap.data()?.enabled ?? true : true);
+    },
+    () => {
+      // 에러 시 기본 허용
+      setGlobalEnabled(true);
+    }
+  );
+}, []);
+
   /* ---------------- State ---------------- */
   const [darkMode, setDarkMode] = useState(false);
   const [toneModal, setToneModal] = useState(false);
@@ -366,15 +374,13 @@ export default function ChatPage({ user,goAdmin }) {
 
   await setDoc(doc(db, "users", uid, "conversations", newId), {
     title: "새 상담",
-    type: "blog",          // ⭐ 이거 없으면 절대 안 뜸
+    type: "blog",
     projectId: currentProjectId || null,
     tone: null,
-    systemPrompt: "",
     createdAt: serverTimestamp(),
   });
 
   setCurrentId(newId);
-   setToneModal(true);
 };
 
 
@@ -564,13 +570,6 @@ const filteredConversations = useMemo(() => {
 }
 
   };
-
-  /* ---------------- Gate ---------------- */
-  // 전역 차단
-
-
-
-// ↓↓↓ ChatPage / AdminPage 렌더링 계속
 
 
   /* ---------------- UI ---------------- */
