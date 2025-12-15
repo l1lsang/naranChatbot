@@ -78,14 +78,15 @@ export default function AdminPage({ goMain }) {
     });
 
     // 2️⃣ 관리자 로그 기록
-    await addDoc(collection(db, "system", "adminLogs"), {
-      adminUid: user.uid,
-      adminEmail: user.email,
-      action: "GLOBAL_ACCESS_TOGGLE",
-      before: enabled,
-      after: !enabled,
-      createdAt: serverTimestamp(),
-    });
+  await addDoc(collection(db, "adminLogs"), {
+  adminUid: user.uid,
+  adminEmail: user.email,
+  action: "GLOBAL_ACCESS_TOGGLE",
+  before: enabled,
+  after: !enabled,
+  createdAt: serverTimestamp(),
+});
+
   };
 
   /* ===============================
