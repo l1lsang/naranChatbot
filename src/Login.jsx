@@ -50,7 +50,7 @@ export default function Login() {
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.6, duration: 0.6 }}
+        transition={{ delay: 3, duration: 0.6 }}
         className="
           relative z-10
           bg-white/90 dark:bg-neutral-900/90
