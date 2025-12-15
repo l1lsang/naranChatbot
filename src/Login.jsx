@@ -1,55 +1,48 @@
 import { useState } from "react";
 import { auth } from "./firebase";
-import {
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-} from "firebase/auth";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { motion, AnimatePresence } from "framer-motion";
 import TypingText from "./TypingText";
-import { useNavigate } from "react-router-dom";
 
 export default function Login({ goSignup, onFinishLogin }) {
-
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
-  const [mode, setMode] = useState("login");
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState(false);
-  const [showTyping, setShowTyping] = useState(false);
 
-  const navigate = useNavigate();
+  const [success, setSuccess] = useState(false);   // 로그인 성공
+  const [showTyping, setShowTyping] = useState(false); // 타이핑 노출
 
   const handleAuth = async (e) => {
     e.preventDefault();
     try {
       setError("");
-      if (mode === "login") {
-        await signInWithEmailAndPassword(auth, email, pw);
-      } else {
-        await createUserWithEmailAndPassword(auth, email, pw);
-      }
 
+      // 🔐 로그인만 담당
+      await signInWithEmailAndPassword(auth, email, pw);
+
+      // ✅ 성공 → 카드 제거
       setSuccess(true);
 
-      // 카드 사라진 뒤 타이핑 시작
+      // ⏱ 카드 사라진 뒤 타이핑 등장
       setTimeout(() => {
         setShowTyping(true);
       }, 700);
     } catch (err) {
-      setError(err.message);
+      setError("이메일 또는 비밀번호가 올바르지 않습니다.");
     }
   };
 
   return (
     <div className="w-screen h-screen relative overflow-hidden">
-      {/* 배경 */}
+      {/* 🌌 배경 이미지 */}
       <div
         className="absolute inset-0 bg-cover bg-center"
         style={{ backgroundImage: "url('/back.png')" }}
       />
 
-      {/* 로그인 카드 */}
+      {/* 메인 레이어 */}
       <div className="relative z-10 w-full h-full flex items-center justify-center">
+        {/* 🟦 로그인 카드 */}
         <AnimatePresence>
           {!success && (
             <motion.div
@@ -65,9 +58,9 @@ export default function Login({ goSignup, onFinishLogin }) {
                 shadow-xl
               "
             >
-              <div className="bg-white/90 dark:bg-neutral-900/90 backdrop-blur-xl p-8 rounded-2xl w-80">
+              <div className="bg-white/90 backdrop-blur-xl p-8 rounded-2xl w-80">
                 <h2 className="text-lg font-semibold mb-4 text-center">
-                  {mode === "login" ? "Welcome Back" : "Create Account"}
+                  Welcome Back
                 </h2>
 
                 <form onSubmit={handleAuth}>
@@ -78,6 +71,7 @@ export default function Login({ goSignup, onFinishLogin }) {
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full p-2 border rounded mb-3"
                   />
+
                   <input
                     type="password"
                     placeholder="Password"
@@ -93,38 +87,34 @@ export default function Login({ goSignup, onFinishLogin }) {
                   )}
 
                   <button
-  type="submit"
-  className="
-    w-full p-2 rounded text-white font-medium
-    bg-gradient-to-r
-    from-sky-400 via-sky-500 to-pink-400
-    hover:from-sky-500 hover:via-sky-600 hover:to-pink-500
-    active:scale-[0.98]
-    transition-all duration-300
-    shadow-md shadow-sky-300/40
-  "
->
-  {mode === "login" ? "로그인" : "회원가입"}
-</button>
-
+                    type="submit"
+                    className="
+                      w-full p-2 rounded text-white font-medium
+                      bg-gradient-to-r
+                      from-sky-400 via-sky-500 to-pink-400
+                      hover:from-sky-500 hover:via-sky-600 hover:to-pink-500
+                      active:scale-[0.98]
+                      transition-all duration-300
+                      shadow-md shadow-sky-300/40
+                    "
+                  >
+                    로그인
+                  </button>
                 </form>
 
+                {/* 👉 회원가입 이동 */}
                 <p
-                  onClick={() =>
-                    setMode(mode === "login" ? "signup" : "login")
-                  }
+                  onClick={goSignup}
                   className="text-sm text-center mt-3 cursor-pointer text-sky-600"
                 >
-                  {mode === "login"
-                    ? "회원가입하기"
-                    : "이미 계정이 있으신가요? 로그인"}
+                  회원가입하기
                 </p>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* 타이핑 문구 */}
+        {/* ✨ 타이핑 문구 */}
         <AnimatePresence>
           {showTyping && (
             <motion.div
@@ -133,14 +123,14 @@ export default function Login({ goSignup, onFinishLogin }) {
               animate={{ opacity: 1 }}
             >
               <TypingText
-  text="Here, Ever Reliable & Open"
-  onComplete={() => {
-    setTimeout(() => {
-      onFinishLogin(); // 🔥 App에게 “이제 Chat 가도 됨” 신호
-    }, 600);
-  }}
-/>
-
+                text="Here, Ever Reliable & Open"
+                onComplete={() => {
+                  // ⏱ 타이핑 끝 → 챗봇 진입
+                  setTimeout(() => {
+                    onFinishLogin();
+                  }, 600);
+                }}
+              />
             </motion.div>
           )}
         </AnimatePresence>
