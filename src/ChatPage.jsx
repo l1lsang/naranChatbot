@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { HexColorPicker } from "react-colorful";
 import { signOut } from "firebase/auth";
 import { auth, db } from "./firebase";
