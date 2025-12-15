@@ -80,7 +80,7 @@ useEffect(() => {
      🌍 전역 스위치 구독
      =============================== */
   useEffect(() => {
-    const ref = doc(db, "admin", "system");
+    const ref = doc(db, "admin", "system", "globalAccess", "config");
 
     const unsub = onSnapshot(
       ref,
