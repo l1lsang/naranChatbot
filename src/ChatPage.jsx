@@ -465,6 +465,13 @@ const addChatConversation = async () => {
 
   setCurrentId(newId);
 };
+const buildMessagesForApi = () => {
+  return (messages || []).map((m) => ({
+    role: m.sender === "user" ? "user" : "assistant",
+    content: m.text,
+  }));
+};
+
 
   /* ---------------- Send ---------------- */
  const sendMessage = async (text) => {
