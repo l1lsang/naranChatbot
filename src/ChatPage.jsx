@@ -510,44 +510,63 @@ const template =
   };
 
   /* ---------------- Gate ---------------- */
-  if (loadingRole)
-    return (
-      <div className="w-screen h-screen flex items-center justify-center text-gray-500">
-        권한 확인 중…
-      </div>
-    );
-  if (userRole !== "active")
-    return (
-      <div className="w-screen h-screen flex items-center justify-center">
-        <button onClick={() => signOut(auth)}>로그아웃</button>
-      </div>
-    );
+ /* ===============================
+   ⏳ 권한 / 전역 상태 로딩
+   =============================== */
 if (loadingRole || globalEnabled === null) {
   return (
-    <div className="w-screen h-screen flex items-center justify-center">
+    <div className="w-screen h-screen flex items-center justify-center text-gray-500">
       권한 확인 중…
     </div>
   );
 }
 
-if (userRole !== "active" || globalEnabled === false) {
-  return (
-    <div className="w-screen h-screen flex items-center justify-center text-center">
-      <div>
-        <h2 className="text-xl font-bold mb-2">⛔ 접근 제한</h2>
-        <p className="mb-4 text-gray-600">
-          현재 서비스가 비활성화되어 있습니다.
-        </p>
-        <button
-          onClick={() => signOut(auth)}
-          className="bg-red-600 text-white px-4 py-2 rounded-lg"
-        >
-          로그아웃
-        </button>
-      </div>
-    </div>
-  );
+/* ===============================
+   👑 관리자 → 무조건 통과
+   =============================== */
+if (userRole === "admin") {
+  // 아무 것도 하지 않고 아래 정상 화면으로 진행
 }
+
+/* ===============================
+   🚫 일반 사용자 차단
+   =============================== */
+else {
+  // 계정 비활성
+  if (userRole !== "active") {
+    return (
+      <div className="w-screen h-screen flex items-center justify-center">
+        <button onClick={() => signOut(auth)}>로그아웃</button>
+      </div>
+    );
+  }
+
+  // 전역 차단
+  if (globalEnabled === false) {
+    return (
+      <div className="w-screen h-screen flex items-center justify-center text-center">
+        <div>
+          <h2 className="text-xl font-bold mb-2">⛔ 접근 제한</h2>
+          <p className="mb-4 text-gray-600">
+            현재 서비스가 비활성화되어 있습니다.
+          </p>
+          <button
+            onClick={() => signOut(auth)}
+            className="bg-red-600 text-white px-4 py-2 rounded-lg"
+          >
+            로그아웃
+          </button>
+        </div>
+      </div>
+    );
+  }
+}
+
+/* ===============================
+   ✅ 여기까지 오면 정상 접근
+   =============================== */
+// ↓↓↓ ChatPage / AdminPage 렌더링 계속
+
 
   /* ---------------- UI ---------------- */
   return (
