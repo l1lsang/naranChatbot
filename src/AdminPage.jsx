@@ -9,6 +9,7 @@ import {
   serverTimestamp,
   getDoc,
 } from "firebase/firestore";
+import { addDoc, collection } from "firebase/firestore";
 
 export default function AdminPage({ goMain }) {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -88,14 +89,28 @@ export default function AdminPage({ goMain }) {
   /* ===============================
      🔘 스위치 토글
      =============================== */
-  const toggle = async () => {
-    const ref = doc(db, "admin", "system", "globalAccess", "config");
+const toggle = async () => {
+  const user = auth.currentUser;
+  if (!user) return;
 
-    await updateDoc(ref, {
-      enabled: !enabled,
-      updatedAt: serverTimestamp(),
-    });
-  };
+  const ref = doc(db, "admin", "system", "globalAccess", "config");
+
+  // 1️⃣ 전역 스위치 변경
+  await updateDoc(ref, {
+    enabled: !enabled,
+    updatedAt: serverTimestamp(),
+  });
+
+  // 2️⃣ 🔥 관리자 로그 기록
+  await addDoc(collection(db, "adminLogs"), {
+    adminUid: user.uid,
+    adminEmail: user.email,
+    action: "GLOBAL_ACCESS_TOGGLE",
+    before: enabled,
+    after: !enabled,
+    createdAt: serverTimestamp(),
+  });
+};
 
   return (
     <div className="w-screen h-screen flex items-center justify-center bg-gray-50">
