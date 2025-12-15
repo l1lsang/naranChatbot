@@ -96,12 +96,41 @@ useEffect(() => {
   }, [darkMode]);
 
   /* ---------------- Load Projects ---------------- */
-  useEffect(() => {
-  if (!user) return;
-  if (conversations.length === 0) {
-    addConversation(); // 자동으로 새 상담 생성
-  }
-}, [user, conversations]);
+ useEffect(() => {
+  if (!user?.uid) return;
+  if (conversations.length !== 0) return;
+
+  const bootstrapFirstConversation = async () => {
+    const uid = user.uid;
+    const newId = Date.now().toString();
+
+    await setDoc(doc(db, "users", uid, "conversations", newId), {
+      title: "제목 생성 중…",
+      tone: null,
+      projectId: currentProjectId || null,
+      systemPrompt: currentProject?.systemPrompt || "",
+      color: currentProject?.color || null,
+      createdAt: serverTimestamp(),
+    });
+
+    const firstMsg = (Date.now() + 1).toString();
+    await setDoc(
+      doc(db, "users", uid, "conversations", newId, "messages", firstMsg),
+      {
+        sender: "bot",
+        text: "새로운 상담을 시작합니다. 먼저 블로그 작성 톤을 선택해주세요! ✍️",
+        createdAt: serverTimestamp(),
+        clientTime: Date.now() / 1000,
+      }
+    );
+
+    setCurrentId(newId);
+    setToneModal(true);
+  };
+
+  bootstrapFirstConversation();
+}, [user?.uid, conversations.length, currentProjectId]);
+
 
   useEffect(() => {
     if (!user?.uid) return;
