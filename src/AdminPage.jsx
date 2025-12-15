@@ -30,9 +30,7 @@ export default function AdminPage({ goMain }) {
       }
 
       const snap = await getDoc(doc(db, "users", user.uid));
-      const role = snap.exists() ? snap.data()?.role : null;
-
-      setIsAdmin(role === "admin");
+      setIsAdmin(snap.exists() && snap.data()?.role === "admin");
       setLoading(false);
     };
 
@@ -41,30 +39,31 @@ export default function AdminPage({ goMain }) {
 
   /* ===============================
      🌍 전역 접근 스위치 구독
-     (admin/system 단일 문서)
      =============================== */
   useEffect(() => {
     if (!isAdmin) return;
 
     const ref = doc(db, "admin", "system", "globalAccess", "config");
 
-
-    return onSnapshot(ref, async (snap) => {
+    const unsub = onSnapshot(ref, async (snap) => {
       if (!snap.exists()) {
         // 최초 1회 생성
         await setDoc(ref, {
-          globalEnabled: true,
+          enabled: true,
           updatedAt: serverTimestamp(),
         });
+        setEnabled(true);
         return;
       }
 
-      setEnabled(snap.data()?.globalEnabled ?? false);
+      setEnabled(snap.data()?.enabled ?? false);
     });
+
+    return () => unsub();
   }, [isAdmin]);
 
   /* ===============================
-     ⛔ 관리자 아님
+     ⛔ 접근 제어
      =============================== */
   if (loading) {
     return (
@@ -101,7 +100,7 @@ export default function AdminPage({ goMain }) {
 
     // 1️⃣ 전역 스위치 변경
     await updateDoc(ref, {
-      globalEnabled: !enabled,
+      enabled: !enabled,
       updatedAt: serverTimestamp(),
     });
 
@@ -121,9 +120,7 @@ export default function AdminPage({ goMain }) {
       <div className="bg-white p-8 rounded-2xl shadow-xl w-[360px] text-center">
         <h1 className="text-2xl font-bold mb-4">🛠 관리자 패널</h1>
 
-        <p className="mb-6 text-gray-600">
-          전체 사용자 접근 상태
-        </p>
+        <p className="mb-6 text-gray-600">전체 사용자 접근 상태</p>
 
         <button
           onClick={toggle}
