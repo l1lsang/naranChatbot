@@ -9,33 +9,38 @@ export default function Login({ goSignup, onFinishLogin }) {
   const [pw, setPw] = useState("");
   const [error, setError] = useState("");
 
-  const [success, setSuccess] = useState(false);     // 로그인 성공
-  const [showTyping, setShowTyping] = useState(false); // 타이핑 노출
+  const [success, setSuccess] = useState(false);      // 로그인 성공 → 카드 제거
+  const [showTyping, setShowTyping] = useState(false); // 타이핑 인트로
+  const [loading, setLoading] = useState(false);       // 중복 클릭 방지
 
   const handleAuth = async (e) => {
     e.preventDefault();
+    if (loading) return;
+
     try {
       setError("");
+      setLoading(true);
 
-      // 🔐 로그인만 담당
-     await signInWithEmailAndPassword(auth, email, password);
+      // 🔐 로그인
+      await signInWithEmailAndPassword(auth, email, pw);
 
-// 🔥 바로 메인으로 가지 말고
-setShowTyping(true);
+      // ✅ 로그인 성공 → 카드 제거
+      setSuccess(true);
 
-
-      // ⏱ 카드 사라진 뒤 타이핑 등장
+      // ⏱ 카드 사라진 뒤 타이핑 시작
       setTimeout(() => {
         setShowTyping(true);
-      }, 700);
+      }, 600);
     } catch (err) {
+      console.error(err);
       setError("이메일 또는 비밀번호가 올바르지 않습니다.");
+      setLoading(false);
     }
   };
 
   return (
     <div className="w-screen h-screen relative overflow-hidden">
-      {/* 🌌 배경 이미지 (완전 최하단) */}
+      {/* 🌌 배경 */}
       <div
         className="absolute inset-0 z-0 bg-cover bg-center pointer-events-none"
         style={{ backgroundImage: "url('/back.png')" }}
@@ -51,7 +56,7 @@ setShowTyping(true);
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ delay: 1.2, duration: 0.6 }}
+              transition={{ duration: 0.4 }}
               className="
                 relative p-[1px] rounded-2xl
                 bg-gradient-to-br
@@ -89,6 +94,7 @@ setShowTyping(true);
 
                   <button
                     type="submit"
+                    disabled={loading}
                     className="
                       w-full p-2 rounded text-white font-medium
                       bg-gradient-to-r
@@ -97,6 +103,7 @@ setShowTyping(true);
                       active:scale-[0.98]
                       transition-all duration-300
                       shadow-md shadow-sky-300/40
+                      disabled:opacity-50
                     "
                   >
                     로그인
@@ -115,27 +122,26 @@ setShowTyping(true);
           )}
         </AnimatePresence>
 
-        {/* ✨ 중앙 타이핑 문구 (최상단) */}
+        {/* ✨ 타이핑 인트로 */}
         <AnimatePresence>
-  {showTyping && (
-    <motion.div
-      className="absolute inset-0 z-30 flex items-center justify-center bg-black"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-    >
-      <TypingText
-        text="Here, Ever Reliable & Open"
-        onComplete={() => {
-          setTimeout(() => {
-            onFinishLogin(); // ⭐ 여기서 진입
-          }, 600);
-        }}
-      />
-    </motion.div>
-  )}
-</AnimatePresence>
-
+          {showTyping && (
+            <motion.div
+              className="absolute inset-0 z-30 flex items-center justify-center bg-black"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <TypingText
+                text="Here, Ever Reliable & Open"
+                onComplete={() => {
+                  setTimeout(() => {
+                    onFinishLogin(); // ⭐ 여기서 App → ChatPage 진입
+                  }, 600);
+                }}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
