@@ -764,13 +764,13 @@ else {
     </button>
   </div>
 
-  {filteredConversations
-    .filter((c) => c.type === "blog")
-    .map((conv) => (
+ {filteredConversations
+  .filter((c) => c.type === "blog")
+  .map((conv) => (
+    <div key={conv.id} className="flex items-center gap-2 mb-1">
       <div
-        key={conv.id}
         onClick={() => setCurrentId(conv.id)}
-        className={`p-3 rounded-lg border cursor-pointer mb-1
+        className={`flex-1 p-3 rounded-lg border cursor-pointer
           ${
             currentId === conv.id
               ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30"
@@ -781,7 +781,20 @@ else {
           {conv.title}
         </div>
       </div>
-    ))}
+
+      {/* ❌ 삭제 */}
+      <button
+        onClick={() => deleteConversation(conv.id)}
+        className="text-[10px] px-2 py-1 rounded border
+          bg-red-100 text-red-700 border-red-300
+          dark:bg-red-900/40 dark:text-red-300 dark:border-red-900/60"
+      >
+        삭제
+      </button>
+    </div>
+  ))}
+
+    
 </div>
 <div className="mb-6">
   <div className="flex items-center justify-between mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
@@ -794,13 +807,13 @@ else {
     </button>
   </div>
 
-  {filteredConversations
-    .filter((c) => c.type === "chat")
-    .map((conv) => (
+{filteredConversations
+  .filter((c) => c.type === "chat")
+  .map((conv) => (
+    <div key={conv.id} className="flex items-center gap-2 mb-1">
       <div
-        key={conv.id}
         onClick={() => setCurrentId(conv.id)}
-        className={`p-3 rounded-lg border cursor-pointer mb-1
+        className={`flex-1 p-3 rounded-lg border cursor-pointer
           ${
             currentId === conv.id
               ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30"
@@ -811,7 +824,19 @@ else {
           {conv.title || "법률 채팅"}
         </div>
       </div>
-    ))}
+
+      {/* ❌ 삭제 */}
+      <button
+        onClick={() => deleteConversation(conv.id)}
+        className="text-[10px] px-2 py-1 rounded border
+          bg-red-100 text-red-700 border-red-300
+          dark:bg-red-900/40 dark:text-red-300 dark:border-red-900/60"
+      >
+        삭제
+      </button>
+    </div>
+  ))}
+
 </div>
 
 
