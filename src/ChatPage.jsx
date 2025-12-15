@@ -140,24 +140,6 @@ function ToneModal({ open, onSelect, toneOptions }) {
 export default function ChatPage({ user,goAdmin }) {
   const textareaRef = useRef(null);
   const chatRef = useRef(null);
-  const [globalEnabled, setGlobalEnabled] = useState(null);
-
-
-  // 🌍 전역 접근 상태 구독
- useEffect(() => {
-  const ref = doc(db, "system", "globalAccess");
-
-  return onSnapshot(
-    ref,
-    (snap) => {
-      setGlobalEnabled(snap.exists() ? snap.data()?.enabled ?? true : true);
-    },
-    () => {
-      // 에러 시 기본 허용
-      setGlobalEnabled(true);
-    }
-  );
-}, []);
 
   /* ---------------- State ---------------- */
   const [darkMode, setDarkMode] = useState(false);
@@ -570,6 +552,10 @@ const filteredConversations = useMemo(() => {
 }
 
   };
+const openProjectModal = (project) => {
+  setProjectEditing(project);
+  setProjectModalOpen(true);
+};
 
 
   /* ---------------- UI ---------------- */
