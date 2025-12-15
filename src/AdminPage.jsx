@@ -46,7 +46,8 @@ export default function AdminPage({ goMain }) {
   useEffect(() => {
     if (!isAdmin) return;
 
-    const ref = doc(db, "admin", "system");
+    const ref = doc(db, "admin", "system", "globalAccess", "config");
+
 
     return onSnapshot(ref, async (snap) => {
       if (!snap.exists()) {

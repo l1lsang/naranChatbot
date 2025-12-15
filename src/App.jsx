@@ -34,29 +34,24 @@ export default function App() {
      🔐 로그인 상태 감지
      =============================== */
 useEffect(() => {
- const ref = doc(db, "admin", "system");
+  const ref = doc(db, "admin", "system", "globalAccess", "config");
 
   const unsub = onSnapshot(
     ref,
     (snap) => {
-      if (!snap.exists()) {
-        // 🔥 문서 없으면 기본 허용
-        setGlobalEnabled(true);
-      } else {
-        setGlobalEnabled(snap.data()?.enabled === true);
-      }
+      setGlobalEnabled(snap.exists() ? snap.data()?.enabled ?? false : false);
       setLoadingGlobal(false);
     },
     (err) => {
       console.error("🔥 globalAccess snapshot error:", err);
-      // 🔥 에러 나도 서비스 막지 않음
-      setGlobalEnabled(true);
+      setGlobalEnabled(false);
       setLoadingGlobal(false);
     }
   );
 
   return () => unsub();
 }, []);
+
 
   /* ===============================
      👑 role 기반 관리자 판별
