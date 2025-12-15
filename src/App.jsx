@@ -16,7 +16,7 @@ export default function App() {
      =============================== */
   const [user, setUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
-  const [page, setPage] = useState("login");
+  const [page, setPage] = useState("login"); // login | signup | main | admin
 
   /* ===============================
      🎬 인트로
@@ -36,7 +36,7 @@ export default function App() {
   const [loadingGlobal, setLoadingGlobal] = useState(true);
 
   /* ===============================
-     🔐 로그인 + 관리자 권한 확인
+     🔐 로그인 상태 감지
      =============================== */
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (currentUser) => {
@@ -48,6 +48,7 @@ export default function App() {
         setIsAdmin(token.claims.admin === true);
       } else {
         setIsAdmin(false);
+        setPage("login");
       }
     });
 
@@ -56,7 +57,6 @@ export default function App() {
 
   /* ===============================
      🌍 전역 스위치 구독
-     (admin / system 문서)
      =============================== */
   useEffect(() => {
     const ref = doc(db, "admin", "system");
@@ -64,11 +64,7 @@ export default function App() {
     const unsub = onSnapshot(
       ref,
       (snap) => {
-        if (snap.exists()) {
-          setGlobalEnabled(snap.data()?.globalAccess ?? false);
-        } else {
-          setGlobalEnabled(false);
-        }
+        setGlobalEnabled(snap.exists() ? snap.data()?.globalAccess ?? false : false);
         setLoadingGlobal(false);
       },
       () => {
@@ -99,8 +95,8 @@ export default function App() {
       <Login
         goSignup={() => setPage("signup")}
         onFinishLogin={() => {
-    setShowIntro(true);   // ⭐ 이게 핵심
-  }}
+          setShowIntro(true);   // ⭐ 인트로 시작
+        }}
       />
     ) : (
       <Signup goLogin={() => setPage("login")} />
@@ -135,6 +131,7 @@ export default function App() {
             setTimeout(() => {
               setIntroDone(true);
               setShowIntro(false);
+              setPage("main"); // ⭐⭐⭐ 핵심
             }, 600);
           }}
         />
@@ -152,10 +149,14 @@ export default function App() {
   /* ===============================
      💬 메인 챗봇
      =============================== */
-  return (
-    <ChatPage
-      user={user}
-      goAdmin={isAdmin ? () => setPage("admin") : null}
-    />
-  );
+  if (page === "main") {
+    return (
+      <ChatPage
+        user={user}
+        goAdmin={isAdmin ? () => setPage("admin") : null}
+      />
+    );
+  }
+
+  return null;
 }
