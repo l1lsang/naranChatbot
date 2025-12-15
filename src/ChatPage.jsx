@@ -28,6 +28,15 @@ import moon from "../src/img/moon.png";
 import sun from "../src/img/sun.png";
 import p from "../src/img/p.png";
 import book from "../src/img/book.png";
+const [globalEnabled, setGlobalEnabled] = useState(null);
+
+// 🌍 전역 접근 상태 구독
+useEffect(() => {
+  const ref = doc(db, "admin", "system", "globalAccess");
+  return onSnapshot(ref, (snap) => {
+    setGlobalEnabled(snap.data()?.enabled ?? false);
+  });
+}, []);
 
 /* ---------------------------------------------------------
    ■ 프로젝트 편집 모달
@@ -513,6 +522,32 @@ const template =
         <button onClick={() => signOut(auth)}>로그아웃</button>
       </div>
     );
+if (loadingRole || globalEnabled === null) {
+  return (
+    <div className="w-screen h-screen flex items-center justify-center">
+      권한 확인 중…
+    </div>
+  );
+}
+
+if (userRole !== "active" || globalEnabled === false) {
+  return (
+    <div className="w-screen h-screen flex items-center justify-center text-center">
+      <div>
+        <h2 className="text-xl font-bold mb-2">⛔ 접근 제한</h2>
+        <p className="mb-4 text-gray-600">
+          현재 서비스가 비활성화되어 있습니다.
+        </p>
+        <button
+          onClick={() => signOut(auth)}
+          className="bg-red-600 text-white px-4 py-2 rounded-lg"
+        >
+          로그아웃
+        </button>
+      </div>
+    </div>
+  );
+}
 
   /* ---------------- UI ---------------- */
   return (

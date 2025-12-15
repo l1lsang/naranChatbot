@@ -5,6 +5,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import Login from "./Login";
 import Signup from "./Signup";
 import ChatPage from "./ChatPage";
+import AdminPage from "./AdminPage";
 import TypingText from "./TypingText";
 
 export default function App() {
@@ -16,14 +17,27 @@ export default function App() {
   const [showIntro, setShowIntro] = useState(false);
   const [introDone, setIntroDone] = useState(false);
 
+  // 🔐 관리자 여부
+  const [isAdmin, setIsAdmin] = useState(false);
+
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (currentUser) => {
+    const unsub = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       setLoadingUser(false);
+
+      if (currentUser) {
+        // 🔐 Custom Claim 확인
+        const token = await currentUser.getIdTokenResult();
+        setIsAdmin(token.claims.admin === true);
+      } else {
+        setIsAdmin(false);
+      }
     });
+
     return () => unsub();
   }, []);
 
+  /* ---------------- 로딩 ---------------- */
   if (loadingUser) {
     return (
       <div className="w-screen h-screen flex items-center justify-center">
@@ -37,7 +51,7 @@ export default function App() {
     return page === "login" ? (
       <Login
         goSignup={() => setPage("signup")}
-        onFinishLogin={() => setShowIntro(true)} // ⭐ 여기
+        onFinishLogin={() => setShowIntro(true)}
       />
     ) : (
       <Signup goLogin={() => setPage("login")} />
@@ -61,6 +75,16 @@ export default function App() {
     );
   }
 
+  /* ---------------- 관리자 페이지 ---------------- */
+  if (isAdmin && page === "admin") {
+    return <AdminPage goMain={() => setPage("main")} />;
+  }
+
   /* ---------------- 메인 챗봇 ---------------- */
-  return <ChatPage user={user} />;
+  return (
+    <ChatPage
+      user={user}
+      goAdmin={isAdmin ? () => setPage("admin") : null}
+    />
+  );
 }
