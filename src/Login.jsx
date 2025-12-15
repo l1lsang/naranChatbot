@@ -8,7 +8,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import TypingText from "./TypingText";
 import { useNavigate } from "react-router-dom";
 
-export default function Login() {
+export default function Login({ goSignup, onFinishLogin }) {
+
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [mode, setMode] = useState("login");
