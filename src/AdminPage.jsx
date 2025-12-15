@@ -7,36 +7,46 @@ import {
   updateDoc,
   setDoc,
   serverTimestamp,
+  getDoc,
 } from "firebase/firestore";
 
-export default function AdminPage() {
+export default function AdminPage({ goMain }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [enabled, setEnabled] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 🔐 관리자 여부 확인
+  /* ===============================
+     👑 관리자 여부 (Firestore role 기준)
+     =============================== */
   useEffect(() => {
-    const checkAdmin = async () => {
+    const checkRole = async () => {
       const user = auth.currentUser;
-      if (!user) return;
+      if (!user) {
+        setIsAdmin(false);
+        setLoading(false);
+        return;
+      }
 
-      const token = await user.getIdTokenResult();
-      setIsAdmin(token.claims.admin === true);
+      const snap = await getDoc(doc(db, "users", user.uid));
+      const role = snap.exists() ? snap.data()?.role : null;
+
+      setIsAdmin(role === "admin");
+      setLoading(false);
     };
 
-    checkAdmin();
+    checkRole();
   }, []);
 
-  // 🌍 전역 스위치 구독
+  /* ===============================
+     🌍 전역 접근 스위치 구독
+     =============================== */
   useEffect(() => {
     if (!isAdmin) return;
 
     const ref = doc(db, "admin", "system", "globalAccess", "config");
 
-
     return onSnapshot(ref, async (snap) => {
       if (!snap.exists()) {
-        // 최초 1회 생성
         await setDoc(ref, {
           enabled: false,
           updatedAt: serverTimestamp(),
@@ -45,11 +55,20 @@ export default function AdminPage() {
       }
 
       setEnabled(snap.data().enabled);
-      setLoading(false);
     });
   }, [isAdmin]);
 
-  // ⛔ 관리자 아님
+  /* ===============================
+     ⛔ 관리자 아님
+     =============================== */
+  if (loading) {
+    return (
+      <div className="w-screen h-screen flex items-center justify-center">
+        로딩 중…
+      </div>
+    );
+  }
+
   if (!isAdmin) {
     return (
       <div className="w-screen h-screen flex items-center justify-center">
@@ -58,15 +77,17 @@ export default function AdminPage() {
     );
   }
 
-  if (loading || enabled === null) {
+  if (enabled === null) {
     return (
       <div className="w-screen h-screen flex items-center justify-center">
-        로딩 중…
+        설정 불러오는 중…
       </div>
     );
   }
 
-  // 🔘 스위치 토글
+  /* ===============================
+     🔘 스위치 토글
+     =============================== */
   const toggle = async () => {
     const ref = doc(db, "admin", "system", "globalAccess", "config");
 
@@ -97,6 +118,15 @@ export default function AdminPage() {
         <p className="mt-4 text-xs text-gray-400">
           스위치 변경 시 모든 사용자에게 즉시 반영됩니다.
         </p>
+
+        {goMain && (
+          <button
+            onClick={goMain}
+            className="mt-6 w-full py-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition"
+          >
+            ← 메인으로 돌아가기
+          </button>
+        )}
       </div>
     </div>
   );
