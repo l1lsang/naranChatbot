@@ -132,11 +132,14 @@ export default function Login() {
               animate={{ opacity: 1 }}
             >
               <TypingText
-                text="Here, Ever Reliable & Open"
-                onComplete={() => {
-                  setTimeout(() => navigate("/chat"), 600);
-                }}
-              />
+  text="Here, Ever Reliable & Open"
+  onComplete={() => {
+    setTimeout(() => {
+      onFinishLogin(); // 🔥 App에게 “이제 Chat 가도 됨” 신호
+    }, 600);
+  }}
+/>
+
             </motion.div>
           )}
         </AnimatePresence>
