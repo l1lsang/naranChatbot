@@ -34,7 +34,7 @@ export default function Login() {
       <div
         className="absolute inset-0 bg-cover bg-center"
         style={{
-          backgroundImage: "url('/img/back.png')", // 🔥 여기만 수정
+          backgroundImage: "url('/back.png')", // 🔥 여기만 수정
         }}
       >
         {/* 선택: 어두운 오버레이 */}
