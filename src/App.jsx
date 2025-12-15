@@ -26,7 +26,7 @@ export default function App() {
   /* ===============================
      🌍 Global Access
      =============================== */
-  const [globalEnabled, setGlobalEnabled] = useState(null); // ❗ 중요
+  const [globalEnabled, setGlobalEnabled] = useState(true); // ✅ 기본 허용
   const [loadingGlobal, setLoadingGlobal] = useState(true);
 
   /* ===============================
@@ -75,7 +75,7 @@ export default function App() {
   }, [user?.uid]);
 
   /* ===============================
-     🌍 Global Access 구독 (핵심)
+     🌍 Global Access 구독 (안전)
      =============================== */
   useEffect(() => {
     const ref = doc(db, "system", "globalAccess");
@@ -83,16 +83,16 @@ export default function App() {
     const unsub = onSnapshot(
       ref,
       (snap) => {
-        if (!snap.exists()) {
-          setGlobalEnabled(true); // 문서 없으면 기본 허용
+        if (snap.exists()) {
+          setGlobalEnabled(snap.data()?.enabled ?? true);
         } else {
-          setGlobalEnabled(snap.data()?.enabled);
+          setGlobalEnabled(true); // 문서 없으면 기본 허용
         }
         setLoadingGlobal(false);
       },
       (err) => {
         console.error("🔥 globalAccess error:", err);
-        setGlobalEnabled(null); // ❗ 판단 보류
+        setGlobalEnabled(true);   // ❗ 에러 나도 서비스는 열어둠
         setLoadingGlobal(false);
       }
     );
@@ -101,14 +101,9 @@ export default function App() {
   }, []);
 
   /* ===============================
-     ⏳ 전역 로딩 (절대 중요)
+     ⏳ 로딩 (절대 무한 안 됨)
      =============================== */
-  if (
-    loadingUser ||
-    loadingRole ||
-    loadingGlobal ||
-    globalEnabled === null
-  ) {
+  if (loadingUser || loadingRole || loadingGlobal) {
     return (
       <div className="w-screen h-screen flex items-center justify-center">
         🔄 상태 확인 중…
@@ -133,7 +128,7 @@ export default function App() {
   /* ===============================
      ⛔ 전역 차단 (관리자 제외)
      =============================== */
-  if (globalEnabled === false && !isAdmin) {
+  if (!globalEnabled && !isAdmin) {
     return (
       <div className="w-screen h-screen flex items-center justify-center bg-black text-white">
         <div className="text-center">
