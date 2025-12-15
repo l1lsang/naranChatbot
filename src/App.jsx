@@ -170,8 +170,10 @@ export default function App() {
      =============================== */
   return (
     <ChatPage
-      user={user}
-      goAdmin={isAdmin ? () => setPage("admin") : null}
-    />
+  user={user}
+  isAdmin={isAdmin}
+  goAdmin={isAdmin ? () => setPage("admin") : null}
+/>
+
   );
 }
