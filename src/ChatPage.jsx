@@ -19,6 +19,8 @@ import {
   orderBy,
   limit,
 } from "firebase/firestore";
+import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 
 import TypingText from "./TypingText";
 
@@ -786,9 +788,11 @@ const template =
                       : "bg-white dark:bg-neutral-800 dark:text-gray-200"
                   }`}
                 >
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {m.text}
-                  </ReactMarkdown>
+                  <ReactMarkdown
+  remarkPlugins={[remarkGfm, remarkBreaks]}
+>
+  {m.text}
+</ReactMarkdown>
                 </div>
               </div>
             ))}
