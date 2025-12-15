@@ -49,7 +49,31 @@ export default function ChatPage({ user }) {
 
   const currentConv = conversations.find((c) => c.id === currentId) || null;
   const currentProject =
-    projects.find((p) => p.id === currentProjectId) || null;
+    projects.find((p) => p.id === currentProjectId) || null; 
+    const [userRole, setUserRole] = useState(null);
+const [loadingRole, setLoadingRole] = useState(true);
+
+useEffect(() => {
+  if (!user?.uid) return;
+
+  const fetchRole = async () => {
+    try {
+      const snap = await getDoc(doc(db, "users", user.uid));
+      if (snap.exists()) {
+        setUserRole(snap.data().role); // "pending" | "active"
+      } else {
+        setUserRole("pending");
+      }
+    } catch (e) {
+      console.error("role 로드 실패", e);
+      setUserRole("pending");
+    } finally {
+      setLoadingRole(false);
+    }
+  };
+
+  fetchRole();
+}, [user]);
 
   /* ---------------- Dark Mode ---------------- */
   useEffect(() => {
@@ -161,15 +185,29 @@ export default function ChatPage({ user }) {
       }
     );
   };
-if (userRole !== "active") {
+  if (loadingRole) {
   return (
-    <div className="flex-1 flex items-center justify-center text-center">
-      <p className="text-gray-500">
-        🔒 관리자 허용 후 이용 가능합니다.
-      </p>
+    <div className="flex-1 flex items-center justify-center text-gray-500">
+      권한 확인 중…
     </div>
   );
 }
+
+if (userRole !== "active") {
+  return (
+    <div className="flex-1 flex items-center justify-center text-center px-4">
+      <div>
+        <h2 className="text-xl font-semibold mb-2">
+          ⛔ 접근 제한
+        </h2>
+        <p className="text-gray-500">
+          관리자 허용 후 이용 가능합니다.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 
   /* ---------------- UI ---------------- */
   return (
