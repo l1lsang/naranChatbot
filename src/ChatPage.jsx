@@ -142,6 +142,7 @@ export default function ChatPage({ user }) {
   const chatRef = useRef(null);
   const [globalEnabled, setGlobalEnabled] = useState(null);
 
+
   // 🌍 전역 접근 상태 구독
   useEffect(() => {
     const ref = doc(db, "admin", "system", "globalAccess", "config");
