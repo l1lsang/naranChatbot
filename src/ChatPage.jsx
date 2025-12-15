@@ -740,70 +740,43 @@ else {
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 pt-3">
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
-                <span>
-                  상담 {currentProject ? `(프로젝트: ${currentProject.name})` : "(전체)"}
-                </span>
+            {/* ===============================
+    📝 상담 (블로그)
+=============================== */}
+<div className="mb-6">
+  <div className="flex items-center justify-between mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
+    <span>상담</span>
+    <button
+      onClick={addConversation} // 기존 새 상담
+      className="text-[11px] px-2 py-1 rounded border bg-[#e5e7eb] dark:bg-[#333]"
+    >
+      + 새 상담
+    </button>
+  </div>
 
-                <button
-                  onClick={addConversation}
-                  className="
-                    text-[11px] px-2 py-1 rounded border
-                    bg-[#e5e7eb] text-[#111] border-[#ddd]
-                    dark:bg-[#333] dark:text-gray-200 dark:border-[#3a3a3a]
-                  "
-                >
-                  + 새 상담
-                </button>
-              </div>
+  {conversations
+    .filter((c) => c.type === "blog")
+    .map((conv) => (
+      <div
+        key={conv.id}
+        onClick={() => setCurrentId(conv.id)}
+        className={`p-3 rounded-lg border cursor-pointer mb-1
+          ${
+            currentId === conv.id
+              ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30"
+              : "bg-white dark:bg-[#1a1a1a]"
+          }`}
+      >
+        <div className="font-semibold text-sm truncate">{conv.title}</div>
+      </div>
+    ))}
+</div>
 
-              {conversations.map((conv) => {
-                const proj = projects.find((pp) => pp.id === conv.projectId);
-                const color = proj?.color || "#a3a3a3";
-                const selected = conv.id === currentId;
-
-                return (
-                  <div key={conv.id} className="flex items-center gap-2">
-                    <div
-                      onClick={() => setCurrentId(conv.id)}
-                      className="
-                        flex-1 p-3 rounded-lg border cursor-pointer transition
-                        bg-white text-[#111] hover:bg-[#f3f3f3]
-                        dark:bg-[#1a1a1a] dark:text-gray-300 dark:hover:bg-[#222]
-                      "
-                      style={{ borderColor: selected ? color : "transparent" }}
-                    >
-                      <div className="font-semibold text-sm truncate">{conv.title}</div>
-                    </div>
-
-                    <button
-                      onClick={() => renameConversation(conv.id)}
-                      className="
-                        text-[10px] px-2 py-1 rounded border
-                        bg-white text-gray-700 border-gray-300
-                        dark:bg-[#1f1f1f] dark:text-gray-300 dark:border-[#3a3a3a]
-                      "
-                    >
-                      이름
-                    </button>
-
-                    <button
-                      onClick={() => deleteConversation(conv.id)}
-                      className="
-                        text-[10px] px-2 py-1 rounded border
-                        bg-red-100 text-red-700 border-red-300
-                        dark:bg-red-900/40 dark:text-red-300 dark:border-red-900/60
-                      "
-                    >
-                      삭제
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
 {/* ===============================
     💬 채팅 (자유 대화)
+=============================== */}
+{/* ===============================
+    💬 채팅
 =============================== */}
 <div className="mb-6">
   <div className="flex items-center justify-between mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
