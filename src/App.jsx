@@ -12,20 +12,20 @@ import TypingText from "./TypingText";
 
 export default function App() {
   /* ===============================
-     🔐 인증 관련
+     🔐 인증 상태
      =============================== */
   const [user, setUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [page, setPage] = useState("login");
 
   /* ===============================
-     🔑 인트로 제어
+     🎬 인트로
      =============================== */
   const [showIntro, setShowIntro] = useState(false);
   const [introDone, setIntroDone] = useState(false);
 
   /* ===============================
-     🔐 관리자 여부
+     👑 관리자 여부
      =============================== */
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -36,7 +36,7 @@ export default function App() {
   const [loadingGlobal, setLoadingGlobal] = useState(true);
 
   /* ===============================
-     🔐 로그인 상태 감지 + 관리자 확인
+     🔐 로그인 + 관리자 권한 확인
      =============================== */
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (currentUser) => {
@@ -56,15 +56,16 @@ export default function App() {
 
   /* ===============================
      🌍 전역 스위치 구독
+     (admin / system 문서)
      =============================== */
   useEffect(() => {
-    const ref = doc(db, "admin", "system", "globalAccess");
+    const ref = doc(db, "admin", "system");
 
     const unsub = onSnapshot(
       ref,
       (snap) => {
         if (snap.exists()) {
-          setGlobalEnabled(snap.data().enabled);
+          setGlobalEnabled(snap.data()?.globalAccess ?? false);
         } else {
           setGlobalEnabled(false);
         }
@@ -80,7 +81,7 @@ export default function App() {
   }, []);
 
   /* ===============================
-     ⏳ 로딩 화면
+     ⏳ 로딩
      =============================== */
   if (loadingUser || loadingGlobal) {
     return (
@@ -91,7 +92,7 @@ export default function App() {
   }
 
   /* ===============================
-     🚫 로그인 안 된 상태
+     🚫 로그인 안 됨
      =============================== */
   if (!user) {
     return page === "login" ? (
