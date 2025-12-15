@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import { HexColorPicker } from "react-colorful";
 import { signOut } from "firebase/auth";
 import { auth, db } from "./firebase";
+
 import {
   collection,
   doc,
@@ -149,6 +150,7 @@ export default function ChatPage({ user,goAdmin }) {
   const [currentProjectId, setCurrentProjectId] = useState(null);
   const [projectModalOpen, setProjectModalOpen] = useState(false);
   const [projectEditing, setProjectEditing] = useState(null);
+const [globalEnabled, setGlobalEnabled] = useState(true);
 
   const [conversations, setConversations] = useState([]); // 메타데이터만
   const [currentId, setCurrentId] = useState(null);
@@ -216,6 +218,15 @@ useEffect(() => {
     if (!chatRef.current) return;
     chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [messages, loading, showIntroTyping]);
+useEffect(() => {
+  const ref = doc(db, "system", "globalAccess");
+
+  const unsub = onSnapshot(ref, (snap) => {
+    setGlobalEnabled(snap.exists() ? snap.data()?.enabled : true);
+  });
+
+  return () => unsub();
+}, []);
 
   /* ---------------- Projects ---------------- */
   useEffect(() => {
@@ -568,9 +579,17 @@ const openProjectModal = (project) => {
   setProjectModalOpen(true);
 };
 
+if (globalEnabled === false) {
+  return (
+    <div className="w-screen h-screen flex items-center justify-center bg-black text-white">
+      ⛔ 서비스 점검 중입니다
+    </div>
+  );
+}
 
   /* ---------------- UI ---------------- */
   return (
+    
     <div className="w-screen h-screen flex overflow-hidden relative">
       {toneModal && <div className="absolute inset-0 bg-black/20 z-20" />}
       <ToneModal open={toneModal} onSelect={selectTone} toneOptions={toneOptions} />
