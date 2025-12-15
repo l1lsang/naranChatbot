@@ -78,7 +78,7 @@ export default function AdminPage({ goMain }) {
     });
 
     // 2️⃣ 관리자 로그 기록
-    await addDoc(collection(db, "adminLogs"), {
+    await addDoc(collection(db, "system", "adminLogs"), {
       adminUid: user.uid,
       adminEmail: user.email,
       action: "GLOBAL_ACCESS_TOGGLE",
