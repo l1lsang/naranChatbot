@@ -461,15 +461,16 @@ export default function ChatPage({ user }) {
     );
     setToneModal(false);
 
-    if (messages.length === 0) {
-      setIntroTargetConvId(currentId);
-      setShowIntroTyping(true);
-    } else {
-      await saveMessage(
-        "bot",
-        `좋습니다! 선택하신 블로그 톤은 **${toneName}** 입니다.\n"시작"이라고 입력하면 템플릿을 안내해드릴게요.`
-      );
-    }
+   if (messages.length === 0) {
+  const text = `좋습니다! 블로그 톤 선택이 완료되었습니다.\n"시작"이라고 입력하면 템플릿을 안내해드릴게요.`;
+
+  await saveMessage("bot", text);
+
+  // 상태 정리 (혹시 남아있을 수 있는 플래그)
+  setShowIntroTyping(false);
+  setIntroTargetConvId(null);
+}
+
   };
 
   /* ---------------- Gate ---------------- */
@@ -739,17 +740,7 @@ export default function ChatPage({ user }) {
             {showIntroTyping && introTargetConvId === currentId && (
               <div className="flex justify-start">
                 <div className="max-w-[70%] px-4 py-3 rounded-2xl shadow bg-white dark:bg-neutral-800 dark:text-gray-200">
-                  <TypingText
-                    text={`좋습니다! 블로그 톤 선택이 완료되었습니다.\n"시작"이라고 입력하면 템플릿을 안내해드릴게요.`}
-                    onComplete={async () => {
-                      await saveMessage(
-                        "bot",
-                        `좋습니다! 블로그 톤 선택이 완료되었습니다.\n"시작"이라고 입력하면 템플릿을 안내해드릴게요.`
-                      );
-                      setShowIntroTyping(false);
-                      setIntroTargetConvId(null);
-                    }}
-                  />
+                  
                 </div>
               </div>
             )}
