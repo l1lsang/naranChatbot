@@ -167,10 +167,6 @@ export default function ChatPage({ user,goAdmin }) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // ROLE
-  const [userRole, setUserRole] = useState(null);
-  const [loadingRole, setLoadingRole] = useState(true);
-
   // 첫 인트로 타이핑
   const [showIntroTyping, setShowIntroTyping] = useState(false);
   const [introTargetConvId, setIntroTargetConvId] = useState(null);

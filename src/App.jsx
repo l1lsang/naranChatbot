@@ -19,9 +19,10 @@ export default function App() {
   const [page, setPage] = useState("login"); // login | signup | intro | main | admin
 
   /* ===============================
-     👑 관리자 여부
+     👑 관리자 여부 (role 기반)
      =============================== */
   const [isAdmin, setIsAdmin] = useState(false);
+  const [loadingRole, setLoadingRole] = useState(true);
 
   /* ===============================
      🌍 전역 접근 제어
@@ -33,21 +34,42 @@ export default function App() {
      🔐 로그인 상태 감지
      =============================== */
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (currentUser) => {
+    const unsub = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoadingUser(false);
 
-      if (currentUser) {
-        const token = await currentUser.getIdTokenResult(true);
-        setIsAdmin(token.claims.admin === true);
-      } else {
+      if (!currentUser) {
         setIsAdmin(false);
         setPage("login");
+        setLoadingRole(false);
       }
     });
 
     return () => unsub();
   }, []);
+
+  /* ===============================
+     👑 role 기반 관리자 판별
+     =============================== */
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const ref = doc(db, "users", user.uid);
+    const unsub = onSnapshot(
+      ref,
+      (snap) => {
+        const role = snap.data()?.role;
+        setIsAdmin(role === "admin");
+        setLoadingRole(false);
+      },
+      () => {
+        setIsAdmin(false);
+        setLoadingRole(false);
+      }
+    );
+
+    return () => unsub();
+  }, [user?.uid]);
 
   /* ===============================
      🌍 전역 스위치 구독
@@ -75,7 +97,7 @@ export default function App() {
   /* ===============================
      ⏳ 로딩
      =============================== */
-  if (loadingUser || loadingGlobal) {
+  if (loadingUser || loadingRole || loadingGlobal) {
     return (
       <div className="w-screen h-screen flex items-center justify-center">
         🔄 상태 확인 중…
@@ -90,9 +112,7 @@ export default function App() {
     return page === "login" ? (
       <Login
         goSignup={() => setPage("signup")}
-        onFinishLogin={() => {
-          setPage("intro"); // ⭐ 핵심
-        }}
+        onFinishLogin={() => setPage("intro")}
       />
     ) : (
       <Signup goLogin={() => setPage("login")} />
@@ -123,11 +143,9 @@ export default function App() {
       <div className="w-screen h-screen flex items-center justify-center bg-black">
         <TypingText
           text="Here, Ever Reliable & Open"
-           size="xl"
+          size="xl"
           onComplete={() => {
-            setTimeout(() => {
-              setPage("main");
-            }, 600);
+            setTimeout(() => setPage("main"), 600);
           }}
         />
       </div>
@@ -153,8 +171,5 @@ export default function App() {
     );
   }
 
-  /* ===============================
-     🧯 안전장치
-     =============================== */
   return null;
 }
