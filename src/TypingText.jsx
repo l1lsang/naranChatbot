@@ -5,7 +5,9 @@ export default function TypingText({ text, onComplete }) {
 
   return (
     <motion.div
+      // ✅ z-index 기준점
       className="
+        relative
         text-center font-extrabold tracking-tight select-none
         text-[2.5rem] md:text-[4rem] lg:text-[5.5rem]
         bg-gradient-to-r from-sky-300 via-pink-300 to-indigo-300
@@ -18,7 +20,7 @@ export default function TypingText({ text, onComplete }) {
       variants={{
         visible: {
           transition: {
-            staggerChildren: 0.12, // ✍️ 타이핑 속도
+            staggerChildren: 0.12,
           },
         },
       }}
@@ -26,7 +28,7 @@ export default function TypingText({ text, onComplete }) {
       {letters.map((char, i) => (
         <motion.span
           key={i}
-          className="inline-block"
+          className="relative z-10 inline-block" // ⭐ 글자 맨 위
           variants={{
             hidden: {
               opacity: 0,
@@ -48,12 +50,10 @@ export default function TypingText({ text, onComplete }) {
         </motion.span>
       ))}
 
-      {/* 🌙 숨 쉬는 듯한 마지막 빛 */}
+      {/* 🌙 숨 쉬는 빛 (완전 뒤 레이어) */}
       <motion.div
         className="absolute inset-0 -z-10"
-        animate={{
-          opacity: [0.15, 0.35, 0.15],
-        }}
+        animate={{ opacity: [0.15, 0.35, 0.15] }}
         transition={{
           duration: 2.8,
           repeat: Infinity,
