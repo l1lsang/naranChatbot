@@ -98,7 +98,9 @@ export default function App() {
     return page === "login" ? (
       <Login
         goSignup={() => setPage("signup")}
-        onFinishLogin={() => setShowIntro(true)}
+        onFinishLogin={() => {
+    setShowIntro(true);   // ⭐ 이게 핵심
+  }}
       />
     ) : (
       <Signup goLogin={() => setPage("login")} />

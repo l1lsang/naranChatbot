@@ -371,6 +371,7 @@ export default function ChatPage({ user,goAdmin }) {
   });
 
   setCurrentId(newId);
+   setToneModal(true);
 };
 
 
