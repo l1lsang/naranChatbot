@@ -25,6 +25,13 @@ const REF = {
   t6: loadTxt("6.txt"),
   t7: loadTxt("7.txt"),
   t8: loadTxt("8.txt"),
+  t9: loadTxt("9.txt"),
+  t10: loadTxt("10.txt"),
+  t11: loadTxt("11.txt"),
+  t12: loadTxt("12.txt"),
+  t13: loadTxt("13.txt"),
+  t14: loadTxt("14.txt"),
+  t15: loadTxt("15.txt"),
 };
 
 /* =========================================================
@@ -79,6 +86,15 @@ ${REF.t4}
 ${REF.t6}
 ${REF.t7}
 ${REF.t8}
+
+# 판례 참고하여 작성할 때 참고할 판례
+${REF.t9}
+${REF.t10}
+${REF.t11}
+${REF.t12}
+${REF.t13}
+${REF.t14}
+${REF.t15}
 
 # 사건 유형
 ${category || "일반"}
