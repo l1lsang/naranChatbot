@@ -424,22 +424,32 @@ useEffect(() => {
   };
 
   /* ---------------- GPT ---------------- */
-  const requestGpt = async (msgs, type) => {
+ const requestGpt = async (msgs, type) => {
   const last = msgs[msgs.length - 1]?.content?.trim();
 
   /* ===============================
      📝 블로그 전용
      =============================== */
   if (type === "blog") {
+    // 1️⃣ 시작 트리거
     if (last === "시작") {
       const r = await fetch("/api/law/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: msgs }),
       });
-      return (await r.json()).reply;
+
+      const data = await r.json();
+
+      if (!r.ok) {
+        console.error("❌ /law/start error:", data);
+        return "❌ 블로그 작성을 시작할 수 없습니다.";
+      }
+
+      return data.reply;
     }
 
+    // 2️⃣ 필수 입력값 체크
     const filled =
       /✅키워드:\s*\S+/i.test(last) ||
       /✅사기내용:\s*\S+/i.test(last) ||
@@ -451,13 +461,34 @@ useEffect(() => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: msgs }),
       });
+
       const d = await r.json();
-      return `# ${d.title}\n\n${d.intro}\n\n${d.body}\n\n## 결론\n${d.conclusion}\n\n${d.summary_table}`;
+
+      // ⭐⭐⭐ 여기 핵심 ⭐⭐⭐
+      if (!r.ok) {
+        console.error("❌ /law/blog error:", d);
+        return "❌ 글 생성에 실패했습니다. 입력 내용을 다시 확인해주세요.";
+      }
+
+      // 3️⃣ 안전 가드 (undefined 방지)
+      if (!d?.title || !d?.body) {
+        console.error("❌ invalid blog response:", d);
+        return "❌ 생성된 글 형식이 올바르지 않습니다.";
+      }
+
+      return [
+        `# ${d.title}`,
+        d.intro,
+        d.body,
+        `## 결론`,
+        d.conclusion,
+        d.summary_table,
+      ].filter(Boolean).join("\n\n");
     }
   }
 
   /* ===============================
-     💬 채팅 (또는 블로그 일반 대화)
+     💬 일반 채팅
      =============================== */
   const r = await fetch("/api/chat", {
     method: "POST",
@@ -465,37 +496,15 @@ useEffect(() => {
     body: JSON.stringify({ messages: msgs }),
   });
 
-  return (await r.json()).reply;
+  const data = await r.json();
+
+  if (!r.ok) {
+    console.error("❌ /chat error:", data);
+    return "❌ 응답을 불러오지 못했습니다.";
+  }
+
+  return data.reply;
 };
-
-const addChatConversation = async () => {
-  const uid = user.uid;
-  const newId = Date.now().toString();
-
-  await setDoc(doc(db, "users", uid, "conversations", newId), {
-    title: "법률 상담",
-    type: "chat",          // ⭐ 핵심
-    projectId: currentProjectId || null,
-    tone: null,            // ❌ 사용 안 함
-    systemPrompt: "",      // ❌ 사용 안 함
-    createdAt: serverTimestamp(),
-  });
-
-  setCurrentId(newId);
-};
-const buildMessagesForApi = () => {
-  return (messages || []).map((m) => ({
-    role: m.sender === "user" ? "user" : "assistant",
-    content: m.text,
-  }));
-};
-
-const filteredConversations = useMemo(() => {
-  if (!currentProjectId) return conversations;
-  return conversations.filter(
-    (c) => c.projectId === currentProjectId
-  );
-}, [conversations, currentProjectId]);
 
   /* ---------------- Send ---------------- */
  const sendMessage = async (text) => {
