@@ -158,6 +158,23 @@ const [globalEnabled, setGlobalEnabled] = useState(true);
   const [messages, setMessages] = useState([]); // ✅ 선택된 상담의 메시지들만
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+const addChatConversation = async () => {
+  if (!user?.uid) return;
+
+  const uid = user.uid;
+  const newId = Date.now().toString();
+
+  await setDoc(doc(db, "users", uid, "conversations", newId), {
+    title: "법률 상담",
+    type: currentProjectId ? "blog" : "chat", // ⭐ 중요
+    projectId: currentProjectId || null,
+    tone: null,
+    systemPrompt: "",
+    createdAt: serverTimestamp(),
+  });
+
+  setCurrentId(newId);
+};
 
   // 첫 인트로 타이핑
   const [showIntroTyping, setShowIntroTyping] = useState(false);
