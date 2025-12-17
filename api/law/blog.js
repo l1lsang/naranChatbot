@@ -6,43 +6,15 @@ import path from "path";
 /* =========================================================
    1. Runtime
 ========================================================= */
-export const config = {
-  runtime: "nodejs",
-};
+export const config = { runtime: "nodejs" };
 
 /* =========================================================
-   2. TXT 로드
+   2. OpenAI
 ========================================================= */
-const TXT_DIR = path.join(process.cwd(), "src", "txt");
-const loadTxt = (f) => fs.readFileSync(path.join(TXT_DIR, f), "utf8");
-
-const REF = {
-  t1: loadTxt("1.txt"), // 도입부 형식 규칙
-  t2: loadTxt("2.txt"),
-  t3: loadTxt("3.txt"),
-  t4: loadTxt("4.txt"),
-  t5: loadTxt("5.txt"), // 제목 형식 규칙
-  t6: loadTxt("6.txt"),
-  t7: loadTxt("7.txt"),
-  t8: loadTxt("8.txt"),
-  t9: loadTxt("9.txt"),
-  t10: loadTxt("10.txt"),
-  t11: loadTxt("11.txt"),
-  t12: loadTxt("12.txt"),
-  t13: loadTxt("13.txt"),
-  t14: loadTxt("14.txt"),
-  t15: loadTxt("15.txt"),
-};
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 /* =========================================================
-   3. OpenAI
-========================================================= */
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-/* =========================================================
-   4. 출력 JSON 스키마
+   3. 출력 JSON 스키마(프롬프트용)
 ========================================================= */
 const OUTPUT_SCHEMA = `
 {
@@ -55,9 +27,44 @@ const OUTPUT_SCHEMA = `
 `;
 
 /* =========================================================
+   4. TXT 안전 로드 (요청 시점에 로드 + import.meta.url 기반)
+========================================================= */
+const readTxtSafe = (filename) => {
+  // 이 파일(/api/law/blog.js) 기준으로 ../../src/txt 를 가리키도록 조정
+  const baseDir = new URL("../../src/txt/", import.meta.url);
+  const fileUrl = new URL(filename, baseDir);
+  const filePath = fileUrl.pathname;
+
+  // Windows 경로 이슈 보정
+  const normalizedPath = process.platform === "win32"
+    ? filePath.replace(/^\/([A-Za-z]:)/, "$1")
+    : filePath;
+
+  return fs.readFileSync(normalizedPath, "utf8");
+};
+
+const loadREF = () => ({
+  t1: readTxtSafe("1.txt"),
+  t2: readTxtSafe("2.txt"),
+  t3: readTxtSafe("3.txt"),
+  t4: readTxtSafe("4.txt"),
+  t5: readTxtSafe("5.txt"),
+  t6: readTxtSafe("6.txt"),
+  t7: readTxtSafe("7.txt"),
+  t8: readTxtSafe("8.txt"),
+  t9: readTxtSafe("9.txt"),
+  t10: readTxtSafe("10.txt"),
+  t11: readTxtSafe("11.txt"),
+  t12: readTxtSafe("12.txt"),
+  t13: readTxtSafe("13.txt"),
+  t14: readTxtSafe("14.txt"),
+  t15: readTxtSafe("15.txt"),
+});
+
+/* =========================================================
    5. System Prompt
 ========================================================= */
-const buildSystemPrompt = (category) => `
+const buildSystemPrompt = (REF, category) => `
 당신은 **10년 이상 경력의 한국 변호사**입니다.
 아래 JSON 스키마를 **정확히** 따르세요.
 JSON 이외의 출력은 **절대 금지**합니다.
@@ -115,15 +122,16 @@ const isValidOutput = (json) => {
 };
 
 /* =========================================================
-   7. GPT 호출
+   7. GPT 호출 (JSON mode 강제)
 ========================================================= */
-const requestGPT = async (messages, category) => {
+const requestGPT = async (messages, systemPrompt) => {
   const res = await openai.chat.completions.create({
     model: "gpt-4.1",
     temperature: 0.3,
-    max_completion_tokens: 4096,
+    max_completion_tokens: 4096, // Chat Completions에서 지원(권장) :contentReference[oaicite:1]{index=1}
+    response_format: { type: "json_object" }, // JSON mode :contentReference[oaicite:2]{index=2}
     messages: [
-      { role: "system", content: buildSystemPrompt(category) },
+      { role: "system", content: systemPrompt },
       ...messages,
     ],
   });
@@ -135,36 +143,53 @@ const requestGPT = async (messages, category) => {
    8. Handler
 ========================================================= */
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "POST only" });
-  }
-
-  const { messages, category } = req.body || {};
-  if (!Array.isArray(messages)) {
-    return res.status(400).json({ error: "messages 배열 필요" });
-  }
-
-  let attempt = 0;
-  let parsed = null;
-
-  while (attempt < 2) {
-    attempt++;
-
-    const raw = await requestGPT(messages, category);
-
-    try {
-      parsed = JSON.parse(raw);
-      if (isValidOutput(parsed)) break;
-    } catch (e) {
-      // JSON 파싱 실패 → 재시도
+  try {
+    if (req.method !== "POST") {
+      return res.status(405).json({ error: "POST only" });
     }
-  }
 
-  if (!parsed || !isValidOutput(parsed)) {
+    // ⚠️ 어떤 환경에선 req.body가 string일 수도 있어서 안전 처리
+    const body =
+      typeof req.body === "string" ? JSON.parse(req.body) : (req.body || {});
+
+    const { messages, category } = body;
+    if (!Array.isArray(messages)) {
+      return res.status(400).json({ error: "messages 배열 필요" });
+    }
+
+    // ✅ TXT는 요청 시점에 로드 (배포/번들/경로 문제를 여기서 바로 잡음)
+    const REF = loadREF();
+    const systemPrompt = buildSystemPrompt(REF, category);
+
+    let attempt = 0;
+    let parsed = null;
+    let lastRaw = "";
+
+    while (attempt < 2) {
+      attempt++;
+      lastRaw = await requestGPT(messages, systemPrompt);
+
+      try {
+        parsed = JSON.parse(lastRaw);
+        if (isValidOutput(parsed)) break;
+      } catch (e) {
+        // JSON 파싱 실패 → 재시도
+      }
+    }
+
+    if (!parsed || !isValidOutput(parsed)) {
+      // 디버깅용: raw 일부를 같이 내려주면 “왜 파싱이 깨지는지” 바로 보임
+      return res.status(500).json({
+        error: "출력 형식 검증 실패 (재시도 후)",
+        debug_raw_preview: String(lastRaw).slice(0, 500),
+      });
+    }
+
+    return res.status(200).json(parsed);
+  } catch (err) {
     return res.status(500).json({
-      error: "출력 형식 검증 실패 (재시도 후)",
+      error: "API 내부 에러",
+      message: err?.message || String(err),
     });
   }
-
-  return res.status(200).json(parsed);
 }
