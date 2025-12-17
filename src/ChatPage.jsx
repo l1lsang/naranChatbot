@@ -175,6 +175,12 @@ const addChatConversation = async () => {
 
   setCurrentId(newId);
 };
+const buildMessagesForApi = () => {
+  return (messages || []).map((m) => ({
+    role: m.sender === "user" ? "user" : "assistant",
+    content: m.text,
+  }));
+};
 
   // 첫 인트로 타이핑
   const [showIntroTyping, setShowIntroTyping] = useState(false);
