@@ -508,7 +508,6 @@ useEffect(() => {
         `# ${d.title}`,
         d.intro,
         d.body,
-        `## 결론`,
         d.conclusion,
         d.summary_table,
       ].filter(Boolean).join("\n\n");
