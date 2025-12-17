@@ -162,7 +162,12 @@ const [globalEnabled, setGlobalEnabled] = useState(true);
   // 첫 인트로 타이핑
   const [showIntroTyping, setShowIntroTyping] = useState(false);
   const [introTargetConvId, setIntroTargetConvId] = useState(null);
-
+const filteredConversations = useMemo(() => {
+  if (!currentProjectId) return conversations || [];
+  return (conversations || []).filter(
+    (c) => c.projectId === currentProjectId
+  );
+}, [conversations, currentProjectId]);
   const currentConv = useMemo(
     () => conversations.find((c) => c.id === currentId) || null,
     [conversations, currentId]
