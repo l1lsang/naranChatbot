@@ -54,7 +54,7 @@ export default function Login({ goSignup, onFinishLogin }) {
           >
             <div className="bg-white/90 backdrop-blur-xl p-8 rounded-2xl w-80">
               <h2 className="text-lg font-semibold mb-4 text-center">
-                Welcome Back
+                LAW HERO
               </h2>
 
               <form onSubmit={handleAuth}>
