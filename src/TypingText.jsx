@@ -1,28 +1,42 @@
 import { motion } from "framer-motion";
 
-export default function TypingText({ text, onComplete, size = "lg" }) {
+export default function TypingText({
+  text,
+  onComplete,
+  size = "lg",
+  color = "blue",
+}) {
   const letters = text.split("");
-console.log("🔥 TypingText rendered");
 
-const sizeClass =
-  size === "sm"
-    ? "text-base md:text-lg"
-    : size === "xl"
-    ? "text-4xl md:text-5xl lg:text-6xl"
-    : "text-xl md:text-2xl";
+  const sizeClassMap = {
+    xs: "text-sm md:text-base",
+    sm: "text-base md:text-lg",
+    md: "text-lg md:text-xl",
+    lg: "text-xl md:text-2xl",
+    xl: "text-3xl md:text-4xl lg:text-5xl",
+    hero: "text-4xl md:text-5xl lg:text-6xl",
+  };
 
+  const colorClassMap = {
+    pink: "from-pink-400 via-rose-400 to-fuchsia-500",
+    blue: "from-sky-400 via-blue-500 to-indigo-500",
+    purple: "from-purple-400 via-violet-500 to-indigo-600",
+    mint: "from-emerald-400 via-teal-400 to-cyan-400",
+    mono: "from-neutral-200 via-neutral-300 to-neutral-400",
+  };
 
-
-
+  const sizeClass = sizeClassMap[size] || sizeClassMap.lg;
+  const gradientClass =
+    colorClassMap[color] || colorClassMap.blue;
 
   return (
     <motion.div
-      key={text} // ⭐ 이거 중요 (재마운트 → 애니메이션 재실행)
+      key={text}
       className="relative z-20 font-semibold leading-relaxed select-none"
       initial="hidden"
       animate="visible"
       variants={{
-        hidden: {}, // ⭐ 반드시 필요
+        hidden: {},
         visible: {
           transition: { staggerChildren: 0.04 },
         },
@@ -37,7 +51,7 @@ const sizeClass =
             className={`
               inline-block
               ${sizeClass}
-              bg-gradient-to-r from-sky-400 via-pink-400 to-indigo-400
+              bg-gradient-to-r ${gradientClass}
               bg-clip-text text-transparent
               drop-shadow-[0_1px_2px_rgba(0,0,0,0.35)]
             `}
