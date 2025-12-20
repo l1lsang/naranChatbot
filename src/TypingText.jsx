@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 export default function TypingText({
   text,
   onComplete,
-  size = "lg",
+  size = "xl",
   color = "blue",
 }) {
   const letters = text.split("");
