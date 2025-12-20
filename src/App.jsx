@@ -151,7 +151,7 @@ export default function App() {
       <div className="w-screen h-screen flex items-center justify-center bg-black">
         <TypingText
           text="Here, Ever Reliable & Open"
-          size="lg"
+          size="xl"
           onComplete={() => setPage("main")}
         />
       </div>
