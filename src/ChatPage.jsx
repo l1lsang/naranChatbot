@@ -496,6 +496,35 @@ useEffect(() => {
 
       return data.reply;
     }
+    const generateConversationTitle = async () => {
+  if (!currentId || messages.length === 0) return;
+
+  try {
+    const res = await fetch("/api/law", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        category: currentConv?.type === "blog" ? "블로그 상담" : "법률 채팅",
+        messages: messages.map((m) => ({
+          role: m.sender === "user" ? "user" : "assistant",
+          content: m.text,
+        })),
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data?.title) return;
+
+    // 🔥 Firestore 제목 업데이트
+    await updateDoc(
+      doc(db, "users", user.uid, "conversations", currentId),
+      { title: data.title }
+    );
+  } catch (e) {
+    console.error("❌ 제목 생성 실패:", e);
+  }
+};
+
 
     // 2️⃣ 필수 입력값 체크
     const filled =
@@ -592,20 +621,32 @@ useEffect(() => {
   /* ===============================
      3️⃣ GPT 호출
      =============================== */
-  setLoading(true);
-  try {
-    const reply = await requestGpt([
+/* ===============================
+   3️⃣ GPT 호출
+=============================== */
+setLoading(true);
+try {
+  const reply = await requestGpt(
+    [
       ...buildMessagesForApi(),
       { role: "user", content: trimmed },
     ],
-  currentConv.type
+    currentConv.type
   );
 
-    await saveMessage("bot", reply);
-  } finally {
-    setLoading(false);
+  await saveMessage("bot", reply);
 
+  // 🔥 여기 추가 (조건부)
+  if (!currentConv?.title || currentConv.title === "새 상담") {
+    setTimeout(() => {
+      generateConversationTitle();
+    }, 300);
   }
+
+} finally {
+  setLoading(false);
+}
+
 };
 
   /* ---------------- Tone ---------------- */
