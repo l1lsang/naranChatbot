@@ -933,10 +933,11 @@ if (globalEnabled === false && !isAdmin) {
                 >
 <ReactMarkdown
   remarkPlugins={[remarkGfm, remarkBreaks]}
-  className="prose prose-indigo dark:prose-invert max-w-none"
+  className="chat-markdown"
 >
   {m.text}
 </ReactMarkdown>
+
 
 
                 </div>
