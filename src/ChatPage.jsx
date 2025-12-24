@@ -581,6 +581,35 @@ useEffect(() => {
 
   return data.reply;
 };
+const generateConversationTitle = useCallback(async () => {
+  if (!user?.uid || !currentId) return;
+
+  // 메시지가 너무 적으면 제목이 이상해져서 최소 2개 이상일 때만 추천
+  if (!messages || messages.length < 2) return;
+
+  try {
+    const res = await fetch("/api/law", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        category: currentConv?.type === "blog" ? "블로그" : "채팅",
+        messages: messages.map((m) => ({
+          role: m.sender === "user" ? "user" : "assistant",
+          content: m.text,
+        })),
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data?.title) return;
+
+    await updateDoc(doc(db, "users", user.uid, "conversations", currentId), {
+      title: data.title,
+    });
+  } catch (e) {
+    console.error("❌ generateConversationTitle 실패:", e);
+  }
+}, [user?.uid, currentId, messages, currentConv?.type]);
 
   /* ---------------- Send ---------------- */
  const sendMessage = async (text) => {
