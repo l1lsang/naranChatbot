@@ -157,6 +157,8 @@ const [globalEnabled, setGlobalEnabled] = useState(true);
 
   const [messages, setMessages] = useState([]); // ✅ 선택된 상담의 메시지들만
   const [input, setInput] = useState("");
+  const [profile, setProfile] = useState(null);
+
   const [loading, setLoading] = useState(false);
 const addChatConversation = async () => {
   if (!user?.uid) return;
@@ -255,6 +257,24 @@ useEffect(() => {
 
   return () => unsub();
 }, []);
+useEffect(() => {
+  if (!user?.uid) {
+    setProfile(null);
+    return;
+  }
+
+  const ref = doc(db, "users", user.uid);
+
+  const unsub = onSnapshot(ref, (snap) => {
+    if (snap.exists()) {
+      setProfile(snap.data());
+    } else {
+      setProfile(null);
+    }
+  });
+
+  return () => unsub();
+}, [user?.uid]);
 
   /* ---------------- Projects ---------------- */
   useEffect(() => {
@@ -854,10 +874,10 @@ if (globalEnabled === false && !isAdmin) {
                   <img src={p} alt="profile" className="w-5 h-5" />
                 </div>
 
-                <p className="text-xs text-gray-500 dark:text-gray-400 break-all">
-                  {user?.displayName}
+               <p className="text-xs text-gray-500 dark:text-gray-400 break-all">
+  {profile?.name || user?.email || "사용자"}
+</p>
 
-                </p>
               </div>
 {goAdmin && (
   <button
