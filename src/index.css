@@ -1,6 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@import "./chat-markdown.css";
 
 /* 시스템 다크모드 강제 무시 — class 기반 만 사용 */
 html {
