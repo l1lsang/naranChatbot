@@ -779,7 +779,7 @@ if (globalEnabled === false && !isAdmin) {
               : "bg-white dark:bg-[#1a1a1a]"
           }`}
       >
-        <div className="font-semibold text-sm truncate">
+        <div className="font-semibold truncate">
           {conv.title}
         </div>
       </div>
@@ -822,7 +822,7 @@ if (globalEnabled === false && !isAdmin) {
               : "bg-white dark:bg-[#1a1a1a]"
           }`}
       >
-        <div className="font-semibold text-sm truncate">
+        <div className="font-semibold truncate">
           {conv.title || "법률 채팅"}
         </div>
       </div>
@@ -925,7 +925,7 @@ if (globalEnabled === false && !isAdmin) {
                 }`}
               >
                 <div
-                  className={`max-w-[70%] px-4 py-3 rounded-2xl shadow text-sm ${
+                  className={`max-w-[70%] px-4 py-3 rounded-2xl shadow  ${
                     m.sender === "user"
                       ? "bg-indigo-600 text-white"
                       : "bg-white dark:bg-neutral-800 dark:text-gray-200"
@@ -946,7 +946,7 @@ if (globalEnabled === false && !isAdmin) {
 
             {loading && (
               <div className="flex justify-start">
-                <div className="px-4 py-3 text-sm rounded-2xl bg-white dark:bg-neutral-800 shadow">
+                <div className="px-4 py-3 rounded-2xl bg-white dark:bg-neutral-800 shadow">
                   챗봇이 입력 중입니다…
                 </div>
               </div>
