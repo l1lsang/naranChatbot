@@ -934,12 +934,13 @@ if (globalEnabled === false && !isAdmin) {
                       : "bg-white dark:bg-neutral-800 dark:text-gray-200"
                   }`}
                 >
-                  <ReactMarkdown
+<ReactMarkdown
   remarkPlugins={[remarkGfm, remarkBreaks]}
-  className="chat-markdown"
+  className="prose prose-indigo dark:prose-invert max-w-none"
 >
   {m.text}
 </ReactMarkdown>
+
 
                 </div>
               </div>
