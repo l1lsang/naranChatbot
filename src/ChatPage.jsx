@@ -566,8 +566,6 @@ useEffect(() => {
       "⑦ 실제 피해 사례를 중점으로 한 글";
 
     await saveMessage("bot", template);
-    setInput("");
-    resetTextareaHeight();
     return; // ⭐ GPT 호출 안 함
   }
 
@@ -586,8 +584,7 @@ useEffect(() => {
     await saveMessage("bot", reply);
   } finally {
     setLoading(false);
-    setInput("");
-    resetTextareaHeight();
+
   }
 };
 
@@ -974,7 +971,14 @@ if (globalEnabled === false && !isAdmin) {
   onKeyDown={(e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      sendMessage(input);
+
+      const text = input;   // 🔥 현재 입력값 복사
+      setInput("");         // 🔥 먼저 비움
+      if (textareaRef.current) {
+        textareaRef.current.style.height = "auto";
+      }
+
+      sendMessage(text);    // 🔥 그 다음 전송
     }
   }}
   className={`flex-1 border px-4 py-2 rounded-xl resize-none overflow-hidden leading-relaxed dark:border-neutral-600 ${
@@ -990,6 +994,7 @@ if (globalEnabled === false && !isAdmin) {
       : "먼저 블로그 톤을 선택해주세요"
   }
 />
+
 
 
             <button
